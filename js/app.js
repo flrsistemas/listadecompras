@@ -146,7 +146,7 @@ function renderAuth(info = '', isErr = false) {
     <button class="switch" id="switch-mode" type="button">
       ${login ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entrar'}
     </button>
-    <p class="sub"><a href="/listadecompras/privacy.html" target="_blank" rel="noopener">Política de privacidade</a></p>
+    <p class="sub"><a href="/listadecompras/ajuda/" target="_blank" rel="noopener">Ajuda</a> &middot; <a href="/listadecompras/privacy.html" target="_blank" rel="noopener">Política de privacidade</a></p>
   </section>`;
 
   $('#switch-mode').onclick = () => { state.authMode = login ? 'signup' : 'login'; renderAuth(); };
