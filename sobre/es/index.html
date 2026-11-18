@@ -59,6 +59,10 @@
     border-radius: 50%; background: var(--brand); color: var(--brand-text); display: grid; place-items: center; font-weight: 700; }
   ol.steps h4 { margin: 0 0 4px; font-size: 1.02rem; }
   ol.steps p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .shots { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 14px; margin: 0 -2px; }
+  .shots figure { margin: 0; flex: 0 0 auto; scroll-snap-align: start; }
+  .shots img { display: block; width: 200px; height: auto; border-radius: 18px; border: 1px solid var(--border); }
+  .shots figcaption { color: var(--muted); font-size: .85rem; margin-top: 8px; max-width: 200px; }
   .summary { background: var(--accent-bg); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 16px 18px; }
   .summary p { margin: 0; }
   a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
@@ -117,6 +121,26 @@
         <h4>Se instala como app</h4>
         <p>Agrégala a la pantalla de inicio del celular y ábrela como cualquier otra aplicación.</p>
       </div>
+    </div>
+
+    <h3 class="section">Cómo se ve</h3>
+    <p class="note" style="margin:0 0 10px">Pantallas de la app con datos de ejemplo. La app está en portugués.</p>
+    <div class="shots">
+      <figure>
+        <img src="/listadecompras/sobre/img/lista-listas.png" width="1000" height="2120" loading="lazy"
+             alt="Pantalla con las listas de compras y el total de cada una.">
+        <figcaption>Tus listas, con el total de cada una</figcaption>
+      </figure>
+      <figure>
+        <img src="/listadecompras/sobre/img/lista-itens.png" width="1000" height="2120" loading="lazy"
+             alt="Pantalla de una lista con artículos por categoría, precios y el total de la lista.">
+        <figcaption>Artículos por categoría, con precio</figcaption>
+      </figure>
+      <figure>
+        <img src="/listadecompras/sobre/img/lista-compartilhar.png" width="1000" height="2120" loading="lazy"
+             alt="Ventana para compartir la lista por correo y ver los participantes.">
+        <figcaption>Compartiendo con quien compra contigo</figcaption>
+      </figure>
     </div>
 
     <h3 class="section" id="how">Cómo funciona</h3>
