@@ -27,6 +27,19 @@ function guessCategory(name) {
   return null;
 }
 
+const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const money = (v) => brl.format(Number(v) || 0);
+// Aceita "12,50", "12.50" e "1.234,56"; vazio/inválido => null
+function parsePrice(s) {
+  let t = String(s ?? '').trim().replace(/[^\d.,]/g, '');
+  if (!t) return null;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+}
+const priceInput = (v) => (v == null ? '' : String(v).replace('.', ','));
+const sumPrices = (items) => Math.round(items.reduce((s, i) => s + (Number(i.price) || 0), 0) * 100) / 100;
+
 function toast(msg, isErr = false) {
   const t = $('#toast');
   t.textContent = msg;
@@ -49,6 +62,7 @@ const state = {
   listId: null,
   items: [],
   members: [],
+  totals: {},
   authMode: 'login',
   channels: [],
   live: false,
@@ -171,21 +185,32 @@ function route() {
 const listsKey = () => `lc:lists:${state.user.id}`;
 const itemsKey = (id) => `lc:items:${id}`;
 const membersKey = (id) => `lc:members:${id}`;
+const totalsKey = () => `lc:totals:${state.user.id}`;
 
 async function showLists() {
   teardownItemsChannel();
   state.listId = null;
   state.lists = store.get(listsKey()) || state.lists;
+  state.totals = store.get(totalsKey()) || state.totals;
   renderLists();
   await loadLists();
   setupListsChannel();
 }
 
 async function loadLists() {
-  const { data, error } = await sb.from('shopping_lists').select('*').order('created_at', { ascending: false });
-  if (error) { if (navigator.onLine) toast('Erro ao carregar listas', true); return; }
-  state.lists = data;
-  store.set(listsKey(), data);
+  const [lr, ir] = await Promise.all([
+    sb.from('shopping_lists').select('*').order('created_at', { ascending: false }),
+    sb.from('shopping_items').select('list_id, price'),
+  ]);
+  if (lr.error) { if (navigator.onLine) toast('Erro ao carregar listas', true); return; }
+  state.lists = lr.data;
+  store.set(listsKey(), lr.data);
+  if (!ir.error) {
+    const t = {};
+    for (const r of ir.data) t[r.list_id] = (t[r.list_id] || 0) + (Number(r.price) || 0);
+    state.totals = t;
+    store.set(totalsKey(), t);
+  }
   if (!state.listId) renderLists();
 }
 
@@ -206,6 +231,7 @@ function renderLists() {
         <span class="ico">${l.owner_id === me ? '📋' : '🤝'}</span>
         <span class="grow"><span class="name">${esc(l.name)}</span><br>
           <span class="meta">${l.owner_id === me ? 'Sua lista' : 'Compartilhada com você'}</span></span>
+        <span class="total">${money(Math.round((state.totals[l.id] || 0) * 100) / 100)}</span>
         <span>›</span>
       </button>`).join('') : '<div class="empty">Nenhuma lista ainda.<br>Crie a primeira acima 👆</div>'}
   </div>`;
@@ -226,6 +252,7 @@ function setupListsChannel() {
   teardownRealtime();
   const ch = sb.channel('lists-' + state.user.id)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'list_members' }, () => { if (!state.listId) loadLists(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_items' }, () => { if (!state.listId) loadLists(); })
     .subscribe();
   state.channels.push(ch);
 }
@@ -289,8 +316,10 @@ function renderListShell(soft = false) {
       ${CAT_ORDER.map((c) => `<option value="${c}">${CATS[c]} ${c}</option>`).join('')}
     </select>
     <input name="quantity" placeholder="Qtd (2 un)" maxlength="30" style="grid-column:2/3;grid-row:2" aria-label="Quantidade">
-    <button class="primary" type="submit" style="grid-column:1/-1">Adicionar</button>
+    <input name="price" placeholder="Preço (R$)" inputmode="decimal" maxlength="12" style="grid-column:1/2;grid-row:3" aria-label="Preço">
+    <button class="primary" type="submit" style="grid-column:2/3;grid-row:3">Adicionar</button>
   </form>
+  <div class="total-bar" id="total-bar"></div>
   <div id="items"></div>`;
 
   $('#back').onclick = () => (location.hash = '#/');
@@ -310,8 +339,8 @@ function renderListShell(soft = false) {
     const name = f.name.value.trim();
     if (!name) return;
     if (!navigator.onLine) return toast('Sem conexão: não é possível adicionar agora', true);
-    const row = { list_id: state.listId, name, quantity: f.quantity.value.trim() || null, category: f.category.value, created_by: state.user.id };
-    f.name.value = ''; f.quantity.value = ''; manualCat = false;
+    const row = { list_id: state.listId, name, quantity: f.quantity.value.trim() || null, price: parsePrice(f.price.value), category: f.category.value, created_by: state.user.id };
+    f.name.value = ''; f.quantity.value = ''; f.price.value = ''; manualCat = false;
     f.name.focus();
     const { data, error } = await sb.from('shopping_items').insert(row).select().single();
     if (error) return toast('Erro ao adicionar item', true);
@@ -333,6 +362,7 @@ function renderItems() {
         <span class="nm">${esc(i.name)}</span>
         ${i.quantity ? `<span class="qty">${esc(i.quantity)}</span>` : ''}
       </button>
+      ${i.price != null ? `<span class="price">${money(i.price)}</span>` : ''}
       <button class="icon ghost del" data-act="del" aria-label="Remover">✕</button>
     </div>`;
 
@@ -348,6 +378,11 @@ function renderItems() {
       <button class="danger" data-act="clear">Limpar comprados</button></h2>${done.map(itemHtml).join('')}`;
   }
   box.innerHTML = html;
+
+  const total = sumPrices(state.items);
+  const bar = $('#total-bar');
+  if (bar) bar.innerHTML = `<span>Total da lista</span><strong>${money(total)}</strong>`;
+  if (state.listId) state.totals[state.listId] = total;
 }
 
 // Delegação de eventos dos itens
@@ -418,6 +453,7 @@ function openEditDialog(id) {
   <form id="edit-form">
     <input name="name" value="${esc(it.name)}" maxlength="120" required>
     <input name="quantity" value="${esc(it.quantity || '')}" placeholder="Quantidade (ex: 2 un, 1 kg)" maxlength="30">
+    <input name="price" value="${esc(priceInput(it.price))}" placeholder="Preço (R$)" inputmode="decimal" maxlength="12">
     <select name="category">
       ${CAT_ORDER.map((c) => `<option value="${c}" ${c === it.category ? 'selected' : ''}>${CATS[c]} ${c}</option>`).join('')}
     </select>
@@ -430,7 +466,7 @@ function openEditDialog(id) {
   dlg.querySelector('#edit-form').onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target.elements;
-    const patch = { name: f.name.value.trim(), quantity: f.quantity.value.trim() || null, category: f.category.value };
+    const patch = { name: f.name.value.trim(), quantity: f.quantity.value.trim() || null, price: parsePrice(f.price.value), category: f.category.value };
     if (!patch.name) return;
     dlg.close();
     if (!navigator.onLine) return toast('Sem conexão', true);

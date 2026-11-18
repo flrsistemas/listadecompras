@@ -37,6 +37,9 @@ create table if not exists public.shopping_items (
   updated_at timestamptz not null default now()
 );
 
+-- Preço do item (opcional); a soma por lista é feita no app
+alter table public.shopping_items add column if not exists price numeric(10,2) check (price is null or price >= 0);
+
 create index if not exists idx_items_list   on public.shopping_items(list_id);
 create index if not exists idx_members_user on public.list_members(user_id);
 

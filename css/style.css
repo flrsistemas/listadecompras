@@ -89,6 +89,11 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .item.done .box { background: var(--primary); border-color: var(--primary); color: var(--primary-ink); }
 .item .txt { flex: 1; min-width: 0; text-align: left; background: transparent; padding: 6px 4px; }
 .item .nm { display: block; overflow-wrap: anywhere; }
+.item .price { flex: none; font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.item.done .price { color: var(--muted); }
+.total-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin: 4px 0 8px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); }
+.total-bar strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.list-card .total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .item .qty { display: block; font-size: .82rem; color: var(--muted); }
 .item.done .nm { text-decoration: line-through; color: var(--muted); }
 .item.done { opacity: .7; }
