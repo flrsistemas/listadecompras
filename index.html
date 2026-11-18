@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lista de Compras</title>
+  <meta name="description" content="Lista de compras compartilhada em tempo real">
+  <meta name="theme-color" content="#16a34a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Compras">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="banner" class="banner" hidden></div>
+  <main id="app" aria-live="polite"><p class="loading">Carregando…</p></main>
+  <dialog id="dlg"></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript>Este aplicativo precisa de JavaScript.</noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
