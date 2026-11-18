@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Lista de Compras — FLR Sistemas</title>
+<meta name="description" content="Shopping lists shared in real time, with item prices and a list total. Works in the browser and installs on your phone.">
+<link rel="canonical" href="https://flrsistemas.com.br/listadecompras/sobre/en/">
+<link rel="alternate" hreflang="pt" href="https://flrsistemas.com.br/listadecompras/sobre/">
+<link rel="alternate" hreflang="en" href="https://flrsistemas.com.br/listadecompras/sobre/en/">
+<link rel="alternate" hreflang="es" href="https://flrsistemas.com.br/listadecompras/sobre/es/">
+<link rel="alternate" hreflang="x-default" href="https://flrsistemas.com.br/listadecompras/sobre/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FLR Sistemas">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Lista de Compras — FLR Sistemas">
+<meta property="og:description" content="Shopping lists shared in real time, with item prices and a list total. Works in the browser and installs on your phone.">
+<meta property="og:url" content="https://flrsistemas.com.br/listadecompras/sobre/en/">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14201A;
+    --surface: #1B2B22;
+    --text: #E9F2EC;
+    --muted: #A9BDB0;
+    --border: #2D4336;
+    --accent: #4ADE80;
+    --accent-bg: #1D3A2A;
+    --brand: #16A34A;
+    --brand-text: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0 16px 72px; background: var(--bg); color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  header.site { padding: 24px 0 0; }
+  .back { color: var(--muted); font-size: .95rem; text-decoration: none; }
+  .back:hover, .back:focus-visible { color: var(--text); text-decoration: underline; }
+  article.app { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--border); }
+  .app h2 { font-size: 1.6rem; line-height: 1.2; margin: 0 0 6px; }
+  .app .lead { font-size: 1.1rem; color: var(--muted); margin: 0 0 20px; }
+  .app h3.section { font-size: 1.05rem; margin: 30px 0 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 6px; }
+  .button { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 13px 22px;
+    border-radius: 12px; font-weight: 600; text-decoration: none; }
+  .button:hover, .button:focus-visible { filter: brightness(1.12); }
+  .link { color: var(--muted); font-size: .95rem; }
+  .note { color: var(--muted); font-size: .9rem; margin: 10px 0 0; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .card h4 { margin: 0 0 6px; font-size: 1.02rem; }
+  .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+  ol.steps { list-style: none; counter-reset: passo; padding: 0; margin: 0; display: grid; gap: 12px; }
+  ol.steps li { counter-increment: passo; position: relative; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px 16px 64px; }
+  ol.steps li::before { content: counter(passo); position: absolute; left: 18px; top: 16px; width: 32px; height: 32px;
+    border-radius: 50%; background: var(--brand); color: var(--brand-text); display: grid; place-items: center; font-weight: 700; }
+  ol.steps h4 { margin: 0 0 4px; font-size: 1.02rem; }
+  ol.steps p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .summary { background: var(--accent-bg); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 16px 18px; }
+  .summary p { margin: 0; }
+  a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  a.button { text-decoration: none; }
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: .88rem; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .langs { display: flex; gap: 4px; margin-left: auto; font-size: .85rem; }
+  .langs a { color: var(--muted); text-decoration: none; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; }
+  .langs a:hover, .langs a:focus-visible { color: var(--text); }
+  .langs a[aria-current="page"] { color: var(--text); border-color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+
+  <header class="site topbar">
+    <a class="back" href="/en/">← FLR Sistemas</a>
+    <nav class="langs" aria-label="Language"><a href="/listadecompras/sobre/" lang="pt" hreflang="pt" onclick="try{localStorage.setItem('lang','pt')}catch(e){}">PT</a><a href="/listadecompras/sobre/en/" lang="en" hreflang="en" aria-current="page" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a><a href="/listadecompras/sobre/es/" lang="es" hreflang="es" onclick="try{localStorage.setItem('lang','es')}catch(e){}">ES</a></nav>
+  </header>
+
+  <article class="app" id="listadecompras">
+    <h2>Lista de Compras</h2>
+    <p class="lead">Shop together: shared lists that update in real time.</p>
+
+    <div class="actions">
+      <a class="button" href="/listadecompras/">Open the app</a>
+      <a class="link" href="#how">How it works</a>
+    </div>
+    <p class="note">Web app (PWA) for anyone sharing the household shopping. Works in the browser and installs on your phone, no app store needed. The app itself is in Portuguese.</p>
+
+    <h3 class="section">What it does</h3>
+    <p>Create a list, invite the people you shop with by e-mail, and that is it: every item checked, added or removed shows up instantly for everyone. Add each item's price and keep track of what the shopping will cost.</p>
+
+    <div class="grid" style="margin-top:18px">
+      <div class="card">
+        <h4>Share by e-mail</h4>
+        <p>Invite family or friends using the e-mail of their account. Only invited people can see the list.</p>
+      </div>
+      <div class="card">
+        <h4>Real time</h4>
+        <p>Checked the milk off? Everyone sees it right away, without reloading the page.</p>
+      </div>
+      <div class="card">
+        <h4>Price and total</h4>
+        <p>Enter each item's price and see every list's total, right on the cards of the home screen.</p>
+      </div>
+      <div class="card">
+        <h4>By category</h4>
+        <p>Items are grouped into Produce, Butcher, Bakery and more, and the app suggests the category from the name.</p>
+      </div>
+      <div class="card">
+        <h4>Check it offline</h4>
+        <p>At the supermarket with no signal, you can still see the last saved version of the list.</p>
+      </div>
+      <div class="card">
+        <h4>Installs like an app</h4>
+        <p>Add it to your phone's home screen and open it like any other app.</p>
+      </div>
+    </div>
+
+    <h3 class="section" id="how">How it works</h3>
+    <ol class="steps">
+      <li>
+        <h4>Create your account</h4>
+        <p>Sign up with your name, e-mail and a password of at least 8 characters, with letters and numbers. Confirm the e-mail you receive and sign in.</p>
+      </li>
+      <li>
+        <h4>Create a list</h4>
+        <p>Give it a name, like "Monthly groceries", and tap "Criar" (Create).</p>
+      </li>
+      <li>
+        <h4>Add the items</h4>
+        <p>Type the name, and the quantity and price if you like. The category is suggested automatically, and you can change it.</p>
+      </li>
+      <li>
+        <h4>Share</h4>
+        <p>Tap the people icon, enter the e-mail of who will join and tap "Compartilhar" (Share). That person needs to have an account already.</p>
+      </li>
+    </ol>
+
+    <h3 class="section">Install on your phone</h3>
+    <p><strong>Android (Chrome):</strong> open the app, tap the ⋮ menu and "Install app" or "Add to home screen".<br><strong>iPhone (Safari):</strong> tap Share and "Add to Home Screen".</p>
+
+    <div class="summary" style="margin-top:28px">
+      <p>Each list is visible only to the people invited. The owner can remove members or delete the list, and each member can leave the list at any time.</p>
+    </div>
+  </article>
+
+  <footer>
+    <p>
+      FLR Sistemas<br>
+      Contact: <a href="mailto:contato@flrsistemas.com.br">contato@flrsistemas.com.br</a>
+    </p>
+  </footer>
+
+</main>
+</body>
+</html>
