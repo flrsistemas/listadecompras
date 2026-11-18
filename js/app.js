@@ -37,6 +37,23 @@ function parsePrice(s) {
   const n = Number(t);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
 }
+// Campos numéricos: só dígitos e uma vírgula/ponto decimal
+const cleanNum = (v) => {
+  let t = String(v ?? '').replace(/[^\d.,]/g, '');
+  const i = t.search(/[.,]/);
+  if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/[.,]/g, '');
+  return t;
+};
+function bindNumeric(root) {
+  root.querySelectorAll('[data-num]').forEach((el) => {
+    el.addEventListener('input', () => { const c = cleanNum(el.value); if (c !== el.value) el.value = c; });
+  });
+}
+// Quantidade numérica ("2", "1,5"); vazio/inválido => null
+function parseQty(s) {
+  const t = cleanNum(s).replace(/^[.,]+|[.,]+$/g, '');
+  return t && Number(t.replace(',', '.')) > 0 ? t.replace('.', ',') : null;
+}
 const priceInput = (v) => (v == null ? '' : String(v).replace('.', ','));
 const sumPrices = (items) => Math.round(items.reduce((s, i) => s + (Number(i.price) || 0), 0) * 100) / 100;
 
@@ -120,7 +137,8 @@ function renderAuth(info = '', isErr = false) {
     <form class="card" id="auth-form">
       ${login ? '' : '<input name="nome" placeholder="Seu nome" autocomplete="name" required>'}
       <input name="email" type="email" placeholder="E-mail" autocomplete="email" required>
-      <input name="password" type="password" placeholder="Senha (mín. 6 caracteres)" minlength="6"
+      <input name="password" type="password" placeholder="${login ? 'Senha' : 'Senha (mín. 8, com letras e números)'}"
+             ${login ? '' : 'minlength="8" pattern="(?=.*[A-Za-z])(?=.*\\d).{8,}" title="Mínimo de 8 caracteres, com letras e números"'}
              autocomplete="${login ? 'current-password' : 'new-password'}" required>
       ${info ? `<div class="msg ${isErr ? 'err' : ''}">${esc(info)}</div>` : ''}
       <button class="primary" type="submit">${login ? 'Entrar' : 'Criar conta'}</button>
@@ -164,6 +182,7 @@ function traduzErro(err) {
   if (/Invalid login/i.test(m)) return 'E-mail ou senha incorretos.';
   if (/already registered/i.test(m)) return 'Este e-mail já está cadastrado.';
   if (/Email not confirmed/i.test(m)) return 'Confirme seu e-mail antes de entrar.';
+  if (/password.*(at least|characters|weak|contain)|weak_password/i.test(m)) return 'Senha fraca: use no mínimo 8 caracteres, com letras e números.';
   if (/rate limit/i.test(m)) return 'Muitas tentativas. Aguarde um pouco.';
   if (/fetch|network/i.test(m)) return 'Sem conexão com o servidor.';
   return m;
@@ -315,13 +334,14 @@ function renderListShell(soft = false) {
     <select name="category" aria-label="Categoria">
       ${CAT_ORDER.map((c) => `<option value="${c}">${CATS[c]} ${c}</option>`).join('')}
     </select>
-    <input name="quantity" placeholder="Qtd (2 un)" maxlength="30" style="grid-column:2/3;grid-row:2" aria-label="Quantidade">
-    <input name="price" placeholder="Preço (R$)" inputmode="decimal" maxlength="12" style="grid-column:1/2;grid-row:3" aria-label="Preço">
+    <input name="quantity" data-num placeholder="Qtd" inputmode="decimal" maxlength="8" style="grid-column:2/3;grid-row:2" aria-label="Quantidade">
+    <input name="price" data-num placeholder="Preço (R$)" inputmode="decimal" maxlength="12" style="grid-column:1/2;grid-row:3" aria-label="Preço">
     <button class="primary" type="submit" style="grid-column:2/3;grid-row:3">Adicionar</button>
   </form>
   <div class="total-bar" id="total-bar"></div>
   <div id="items"></div>`;
 
+  bindNumeric(app);
   $('#back').onclick = () => (location.hash = '#/');
   $('#share').onclick = openShareDialog;
   const form = $('#add-form');
@@ -339,7 +359,7 @@ function renderListShell(soft = false) {
     const name = f.name.value.trim();
     if (!name) return;
     if (!navigator.onLine) return toast('Sem conexão: não é possível adicionar agora', true);
-    const row = { list_id: state.listId, name, quantity: f.quantity.value.trim() || null, price: parsePrice(f.price.value), category: f.category.value, created_by: state.user.id };
+    const row = { list_id: state.listId, name, quantity: parseQty(f.quantity.value), price: parsePrice(f.price.value), category: f.category.value, created_by: state.user.id };
     f.name.value = ''; f.quantity.value = ''; f.price.value = ''; manualCat = false;
     f.name.focus();
     const { data, error } = await sb.from('shopping_items').insert(row).select().single();
@@ -452,8 +472,8 @@ function openEditDialog(id) {
   <h3>Editar item</h3>
   <form id="edit-form">
     <input name="name" value="${esc(it.name)}" maxlength="120" required>
-    <input name="quantity" value="${esc(it.quantity || '')}" placeholder="Quantidade (ex: 2 un, 1 kg)" maxlength="30">
-    <input name="price" value="${esc(priceInput(it.price))}" placeholder="Preço (R$)" inputmode="decimal" maxlength="12">
+    <input name="quantity" data-num value="${esc(parseQty(it.quantity) || '')}" placeholder="Quantidade" inputmode="decimal" maxlength="8">
+    <input name="price" data-num value="${esc(priceInput(it.price))}" placeholder="Preço (R$)" inputmode="decimal" maxlength="12">
     <select name="category">
       ${CAT_ORDER.map((c) => `<option value="${c}" ${c === it.category ? 'selected' : ''}>${CATS[c]} ${c}</option>`).join('')}
     </select>
@@ -462,11 +482,12 @@ function openEditDialog(id) {
       <button class="primary" type="submit">Salvar</button>
     </div>
   </form>`;
+  bindNumeric(dlg);
   dlg.querySelector('[data-close]').onclick = () => dlg.close();
   dlg.querySelector('#edit-form').onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target.elements;
-    const patch = { name: f.name.value.trim(), quantity: f.quantity.value.trim() || null, price: parsePrice(f.price.value), category: f.category.value };
+    const patch = { name: f.name.value.trim(), quantity: parseQty(f.quantity.value), price: parsePrice(f.price.value), category: f.category.value };
     if (!patch.name) return;
     dlg.close();
     if (!navigator.onLine) return toast('Sem conexão', true);
