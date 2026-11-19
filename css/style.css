@@ -150,3 +150,4 @@ dialog .row { display: flex; gap: 8px; justify-content: flex-end; }
 [hidden] { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.import-banner { background: #0f766e; color: #fff; }

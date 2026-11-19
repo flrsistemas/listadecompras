@@ -17,6 +17,8 @@ function load() {
 const save = (db) => localStorage.setItem(KEY, JSON.stringify(db)); // pode lançar (cota cheia): quem chama trata
 
 export const hasGuestData = () => load().lists.length > 0;
+export const readGuestDb = () => load();
+export const clearGuestDb = () => { try { localStorage.removeItem(KEY); } catch { /* sem acesso */ } };
 
 function withDefaults(table, row) {
   if (table === 'shopping_lists') return { id: uuid(), created_at: now(), ...row };

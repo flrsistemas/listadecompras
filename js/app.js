@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { createLocalClient } from './local-store.js';
+import { createLocalClient, hasGuestData, readGuestDb, clearGuestDb } from './local-store.js';
 import { t, getLang, setLang, LANGS, LANG_NAMES, CAT_LABEL, HELP_URL, PRIVACY_URL, SITE_URL, numLocale, decimalSep } from './i18n.js';
 
 /* ------------------------------ Utilidades ------------------------------ */
@@ -454,7 +454,70 @@ function openGuestWarning() {
   dlg.showModal();
 }
 
-const PASS_PATTERN = '(?=.*[A-Za-z])(?=.*\\d).{8,}';
+/* ---------------- Importar as listas do modo sem conta para a conta ---------------- */
+let importDismissed = false; // "Agora não": some até recarregar o app
+function openImportDialog() {
+  const g = readGuestDb();
+  const nl = g.lists.length, ni = g.items.length;
+  dlg.classList.remove('guest');
+  dlg.innerHTML = `<h3>${esc(t('importTitle'))}</h3><div class="tipbody"><p>${esc(t('importBody', { l: nl, i: ni }))}</p></div>
+    <div class="msg err" id="import-err" hidden></div>
+    <div class="row" style="flex-wrap:wrap">
+      <button type="button" data-close>${esc(t('importLater'))}</button>
+      <button type="button" id="imp-keep">${esc(t('importKeep'))}</button>
+      <button class="primary" type="button" id="imp-move">${esc(t('importMove'))}</button>
+    </div>`;
+  dlg.querySelector('[data-close]').onclick = () => { importDismissed = true; dlg.close(); renderLists(); };
+  const run = async (clear) => {
+    const btns = dlg.querySelectorAll('button');
+    btns.forEach((b) => (b.disabled = true));
+    const err = await importGuestLists(g);
+    if (err) {
+      const box = dlg.querySelector('#import-err');
+      box.textContent = t('importFail'); box.hidden = false;
+      btns.forEach((b) => (b.disabled = false));
+      return;
+    }
+    if (clear) clearGuestDb();
+    importDismissed = !clear ? true : false;
+    dlg.close();
+    toast(t('importDone', { l: nl }));
+    await loadLists();
+    renderLists();
+  };
+  dlg.querySelector('#imp-keep').onclick = () => run(false);
+  dlg.querySelector('#imp-move').onclick = () => run(true);
+  dlg.showModal();
+}
+// Cria na conta cópias das listas e itens do aparelho (ids novos: nunca colide com nada).
+// Devolve null se deu certo, ou o erro. Se falhar no meio, apaga o que já criou nesta tentativa.
+async function importGuestLists(g) {
+  if (!navigator.onLine) return { message: 'offline' };
+  const me = state.user.id;
+  const idMap = {};
+  const created = [];
+  for (const l of g.lists) {
+    const id = newId();
+    idMap[l.id] = id;
+    const { error } = await timed(realSb.from('shopping_lists').insert({ id, name: l.name, owner_id: me }));
+    if (error) { await rollbackImport(created); return error; }
+    created.push(id);
+  }
+  const rows = g.items.filter((i) => idMap[i.list_id]).map((i) => ({
+    id: newId(), list_id: idMap[i.list_id], name: i.name, quantity: i.quantity ?? null, price: i.price ?? null,
+    category: i.category || 'Outros', is_checked: !!i.is_checked, created_by: me,
+  }));
+  for (let k = 0; k < rows.length; k += 200) {
+    const { error } = await timed(realSb.from('shopping_items').insert(rows.slice(k, k + 200)));
+    if (error) { await rollbackImport(created); return error; }
+  }
+  return null;
+}
+async function rollbackImport(ids) {
+  if (ids.length) { try { await realSb.from('shopping_lists').delete().in('id', ids); } catch { /* melhor esforço */ } }
+}
+
+const PASS_PATTERN ='(?=.*[A-Za-z])(?=.*\\d).{8,}';
 // "Confirmar senha": o navegador avisa na hora se os dois campos forem diferentes
 function bindPassMatch(form) {
   const p1 = form.elements.password, p2 = form.elements.password2;
@@ -661,6 +724,7 @@ function renderLists() {
     <button class="ghost" id="logout" title="${esc(t('signout'))}">${esc(t('signout'))}</button>
   </div>
   ${state.guest ? `<div class="guest-banner"><span>⚠️ ${esc(t('guestBanner'))}</span><button type="button" id="guest-signup">${esc(t('guestSignup'))}</button></div>` : ''}
+  ${!state.guest && !importDismissed && hasGuestData() ? `<div class="guest-banner import-banner"><span>📥 ${esc(t('importBanner'))}</span><button type="button" id="import-open">${esc(t('importBtn'))}</button></div>` : ''}
   <form class="newlist" id="newlist">
     <input name="name" placeholder="${esc(t('newListPh'))}" maxlength="80" required>
     <button class="primary" type="submit">${esc(t('create'))}</button>
@@ -684,6 +748,7 @@ function renderLists() {
   $('#tips-btn').onclick = openTipsPanel;
   $('#logout').onclick = logout;
   $('#guest-signup')?.addEventListener('click', () => exitGuest(true));
+  $('#import-open')?.addEventListener('click', openImportDialog);
   $('#newlist').onsubmit = async (e) => {
     e.preventDefault();
     const name = new FormData(e.target).get('name').trim();

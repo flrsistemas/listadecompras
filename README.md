@@ -11,7 +11,7 @@ Parte da [FLR Sistemas](https://flrsistemas.com.br/).
 - **Funciona sem sinal:** marcar, adicionar, editar e remover itens e criar, renomear, excluir e sair de listas ficam
   numa fila no aparelho e são enviados, em ordem, quando a conexão volta (itens e listas pendentes aparecem com ⏳).
 - **Modo sem conta** ("Usar sem conta"): as listas ficam só no `localStorage` do aparelho, sem nenhuma chamada ao
-  Supabase e sem compartilhamento. Limpar os dados do navegador apaga tudo (o app avisa).
+  Supabase e sem compartilhamento; ao criar uma conta dá para importar essas listas. Limpar os dados do navegador apaga tudo (o app avisa).
 - **Conta:** cadastro com confirmação de senha e de e-mail, "Esqueci minha senha" e aviso de e-mail já cadastrado.
 - **3 idiomas** (pt-BR, en, es), escolhidos pelo idioma do aparelho; dicas de uso (💡) e botão **"↻ Atualizar app"**
   (limpa service worker e caches sem apagar conta, listas nem alterações pendentes).
@@ -47,4 +47,4 @@ da FLR Sistemas (`flrsistemas/flrsistemas.github.io`) e as páginas do Preço Ce
 ## Notas
 - Só é possível compartilhar com e-mails já cadastrados, e só depois que a lista chegou ao servidor.
 - Em conflito entre alterações feitas sem sinal e alterações de outra pessoa no mesmo item, vale a que chegar por último.
-- As listas do modo sem conta não são migradas para a conta automaticamente.
+- Ao entrar numa conta num aparelho que tem listas do modo sem conta, o app oferece **importá-las** (copiadas como listas novas; dá para manter ou remover as cópias locais).
