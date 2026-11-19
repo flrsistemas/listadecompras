@@ -108,6 +108,10 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .appfoot { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 26px; color: var(--muted); font-size: .85rem; }
 .appfoot button { min-height: 36px; padding: 4px 12px; font-size: .85rem; color: var(--muted); }
 .appfoot .ver { opacity: .7; }
+.guest-btn { margin-top: 2px; font-size: .92rem; color: var(--muted); }
+.guest-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin: 0 0 10px; border-radius: 12px; background: #f59e0b; color: #1f1300; font-size: .85rem; }
+.guest-banner button { min-height: 32px; padding: 4px 10px; background: rgba(0,0,0,.15); color: inherit; font-weight: 600; white-space: nowrap; }
+dialog.guest .members { display: none; }
 .pending { margin: 4px 0 8px; padding: 8px 12px; border-radius: 10px; font-size: .85rem; background: #f59e0b; color: #1f1300; }
 .tb-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tb-col span { font-size: .8rem; color: var(--muted); }

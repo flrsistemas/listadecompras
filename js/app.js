@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { createLocalClient } from './local-store.js';
 import { t, getLang, setLang, LANGS, LANG_NAMES, CAT_LABEL, HELP_URL, PRIVACY_URL, SITE_URL, numLocale, decimalSep } from './i18n.js';
 
 /* ------------------------------ Utilidades ------------------------------ */
@@ -123,6 +124,7 @@ const state = {
   prefillEmail: '',
   channels: [],
   live: false,
+  guest: false, // modo sem conta: tudo fica só neste aparelho, sem Supabase
 };
 
 const app = $('#app');
@@ -136,9 +138,12 @@ if (!configured) {
   throw new Error('Supabase not configured (js/config.js)');
 }
 
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+const realSb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
 });
+const localSb = createLocalClient(); // modo sem conta (localStorage)
+let sb = realSb; // o app inteiro fala com `sb`: conta (Supabase) ou modo sem conta (local)
+const isOnline = () => state.guest || navigator.onLine; // sem conta não depende de internet
 
 /* ------------------------------ Idioma ---------------------------------- */
 function langSelectHtml() {
@@ -156,7 +161,7 @@ function bindLangSelect() {
 // Marcar, adicionar, EDITAR e REMOVER itens sem conexão ficam guardados no aparelho e
 // são enviados quando o sinal volta, na ordem em que foram feitos. O item novo já nasce
 // com o id definitivo (uuid gerado aqui). Em conflito, vale o último a chegar ao servidor.
-const isNetErr = (err) => !navigator.onLine || /fetch|network|timeout|abort|load failed|offline/i.test(String(err?.message || err?.name || err));
+const isNetErr = (err) => !isOnline() || /fetch|network|timeout|abort|load failed|offline/i.test(String(err?.message || err?.name || err));
 // Em sinal fraco a requisição pode ficar pendurada: após 8 s tratamos como falha de rede
 function timed(q, ms = 8000) {
   const c = new AbortController();
@@ -175,7 +180,7 @@ function setQueue(q) { if (!state.user) return; store.set(queueKey(), q); update
 const isAdd = (e) => e.type === 'add';
 const isEdit = (e) => e.type === 'edit';
 const isDel = (e) => e.type === 'del';
-const isListEntry = (e) => e.type === 'lrename' || e.type === 'ldel' || e.type === 'lleave'; // renomear / excluir / sair da lista
+const isListEntry = (e) => e.type === 'lnew' || e.type === 'lrename' || e.type === 'ldel' || e.type === 'lleave'; // criar / renomear / excluir / sair da lista
 const entryItemId = (e) => (isAdd(e) ? e.row.id : e.id);
 const pendingAdds = (listId) => getQueue().filter((e) => isAdd(e) && e.list_id === listId);
 const findPendingAdd = (id) => getQueue().find((e) => isAdd(e) && e.row.id === id);
@@ -208,7 +213,7 @@ function push(entry, quiet = false, keep = (e) => true) {
   if (first && !quiet) toast(t('queued'));
 }
 const enqueue = (item, is_checked) => push({ id: item.id, list_id: item.list_id, is_checked, ts: Date.now() }, false, (e) => isAdd(e) || isEdit(e) || isDel(e) || e.id !== item.id);
-const enqueueAdd = (row) => push({ type: 'add', id: row.id, list_id: row.list_id, row, ts: Date.now() });
+const enqueueAdd = (row, quiet = false) => push({ type: 'add', id: row.id, list_id: row.list_id, row, ts: Date.now() }, quiet);
 function enqueueEdit(item, patch, quiet = false) {
   const prev = getQueue().find((e) => isEdit(e) && e.id === item.id);
   push({ type: 'edit', id: item.id, list_id: item.list_id, patch: { ...(prev ? prev.patch : {}), ...patch }, ts: prev ? prev.ts : Date.now() }, quiet, (e) => !(isEdit(e) && e.id === item.id));
@@ -217,13 +222,27 @@ function enqueueEdit(item, patch, quiet = false) {
 const enqueueDel = (item, quiet = false) => push({ type: 'del', id: item.id, list_id: item.list_id, ts: Date.now() }, quiet, (e) => isAdd(e) || e.id !== item.id);
 // listas: renomear, excluir (dono) e sair (participante) também ficam na fila
 function pendingListOps() {
-  const removed = new Set(), renamed = {};
-  for (const e of getQueue()) { if (e.type === 'ldel' || e.type === 'lleave') removed.add(e.id); else if (e.type === 'lrename') renamed[e.id] = e.name; }
-  return { removed, renamed };
+  const removed = new Set(), renamed = {}, created = {};
+  for (const e of getQueue()) { if (e.type === 'ldel' || e.type === 'lleave') removed.add(e.id); else if (e.type === 'lrename') renamed[e.id] = e.name; else if (e.type === 'lnew') created[e.id] = e.row; }
+  return { removed, renamed, created };
+}
+const findPendingNew = (id) => getQueue().find((e) => e.type === 'lnew' && e.id === id);
+const isPendingNewList = (id) => !!id && !!findPendingNew(id); // lista criada sem sinal que ainda não chegou ao banco
+const enqueueListNew = (row, quiet = false) => push({ type: 'lnew', id: row.id, list_id: row.id, row, ts: Date.now() }, quiet);
+const editPendingNewList = (id, name) => setQueue(getQueue().map((e) => (e.type === 'lnew' && e.id === id ? { ...e, row: { ...e.row, name } } : e)));
+const dropListEntries = (id) => setQueue(getQueue().filter((e) => e.list_id !== id)); // a lista nunca chegou ao banco: descarta tudo dela
+function dropNewListLocally(id) {
+  dropListEntries(id);
+  state.lists = state.lists.filter((l) => l.id !== id);
+  store.set(listsKey(), state.lists);
+  store.del(itemsKey(id));
+  if (state.listId === id) location.hash = '#/';
 }
 function applyListOps(lists) {
-  const { removed, renamed } = pendingListOps();
-  return lists.filter((l) => !removed.has(l.id)).map((l) => (renamed[l.id] ? { ...l, name: renamed[l.id] } : l));
+  const { removed, renamed, created } = pendingListOps();
+  const have = new Set(lists.map((l) => l.id));
+  const novas = Object.values(created).filter((r) => !have.has(r.id)); // criadas sem sinal: ainda não estão no servidor
+  return [...novas, ...lists].filter((l) => !removed.has(l.id)).map((l) => (renamed[l.id] ? { ...l, name: renamed[l.id] } : l));
 }
 const enqueueListRename = (list, name, quiet = false) => push({ type: 'lrename', id: list.id, list_id: list.id, name, ts: Date.now() }, quiet, (e) => !(e.type === 'lrename' && e.id === list.id));
 // excluir/sair: tudo o que estava pendente nessa lista deixa de importar
@@ -235,9 +254,9 @@ const sameEntry = (a, b) => a.id === b.id && a.ts === b.ts && a.type === b.type;
 let flushing = false;
 let netToast = false;
 async function flushQueue() {
-  if (flushing || !state.user || !navigator.onLine || !getQueue().length) return;
+  if (flushing || !state.user || !isOnline() || !getQueue().length) return;
   flushing = true;
-  let sent = 0, failed = 0, failedOther = 0, broke = false, waited = false;
+  let sent = 0, failed = 0, failedList = 0, failedOther = 0, broke = false, waited = false;
   try {
     while (!broke && getQueue().length) {
       const snapshot = [...getQueue()]; // o que for adicionado durante o envio entra na próxima volta
@@ -251,13 +270,16 @@ async function flushQueue() {
           while (k + 1 < snapshot.length && isDel(snapshot[k + 1]) && batch.length < 50) batch.push(snapshot[++k]);
           res = await timed(sb.from('shopping_items').delete().in('id', batch.map((x) => x.id)));
         } else if (e.type === 'lrename') res = await timed(sb.from('shopping_lists').update({ name: e.name }).eq('id', e.id));
+        else if (e.type === 'lnew') res = await timed(sb.from('shopping_lists').insert(e.row));
         else if (e.type === 'ldel') res = await timed(sb.from('shopping_lists').delete().eq('id', e.id));
         else if (e.type === 'lleave') res = await timed(sb.from('list_members').delete().eq('list_id', e.id).eq('user_id', e.user_id));
         else res = await timed(sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
         const error = res.error;
         if (error && isNetErr(error)) { broke = true; break; } // sem sinal de novo: tenta mais tarde
         if (error) { // recusado de vez (ex.: lista removida): 23505 em item novo = já tinha chegado ao banco
-          if (isAdd(e)) { if (error.code !== '23505') { failed++; if (state.listId === e.list_id) removeItem(e.row.id); } } else failedOther++;
+          if (isAdd(e)) { if (error.code !== '23505') { failed++; if (state.listId === e.list_id) removeItem(e.row.id); } }
+          else if (e.type === 'lnew') { if (error.code !== '23505') { failedList++; dropNewListLocally(e.id); } }
+          else failedOther++;
         }
         if (batch.some((b) => Date.now() - b.ts > 3000)) waited = true; // ficou esperando sinal: vale avisar que sincronizou
         setQueue(getQueue().filter((x) => !batch.some((b) => sameEntry(x, b))));
@@ -265,9 +287,10 @@ async function flushQueue() {
       }
     }
   } finally { flushing = false; }
-  if (broke && navigator.onLine && !netToast) { netToast = true; toast(t('queued')); } // sinal fraco: avisa uma vez
+  if (broke && isOnline() && !netToast) { netToast = true; toast(t('queued')); } // sinal fraco: avisa uma vez
   if (!broke) netToast = false;
-  if (failed) toast(t('errAddItem'), true);
+  if (failedList) toast(t('errCreateList'), true);
+  else if (failed) toast(t('errAddItem'), true);
   else if (failedOther) toast(t('errUpdateItem'), true);
   else if (sent && !getQueue().length && waited) toast(t('synced'));
   if (sent) { if (state.listId) loadItems(); else loadLists(); }
@@ -276,7 +299,7 @@ async function flushQueue() {
 /* ------------------------- Atualizar app (cache) ------------------------- */
 // Para quando o navegador insiste numa versão antiga: baixa os arquivos novos, remove o
 // service worker e os caches e recarrega. Conta, listas e alterações pendentes ficam intactas.
-const SHELL_FILES = ['./', './index.html', './css/style.css', './js/app.js', './js/config.js', './js/i18n.js', './manifest.json'];
+const SHELL_FILES = ['./', './index.html', './css/style.css', './js/app.js', './js/config.js', './js/i18n.js', './js/local-store.js', './manifest.json'];
 async function appVersion() {
   try { const k = (await caches.keys()).find((x) => x.startsWith('lista-compras-')); return k ? k.replace('lista-compras-', '') : ''; } catch { return ''; }
 }
@@ -341,7 +364,7 @@ function openTipsPanel() {
 /* ------------------------------ Offline --------------------------------- */
 function updateBanner() {
   const b = $('#banner');
-  b.hidden = navigator.onLine;
+  b.hidden = isOnline();
   b.textContent = t('offlineBanner');
 }
 window.addEventListener('online', () => { updateBanner(); flushQueue(); route(); toast(t('online')); });
@@ -371,10 +394,16 @@ const APP_URL = new URL('./', location.href).href; // endereço do app, sem hash
 async function init() {
   updateBanner();
   consumeAuthCallback();
-  const { data: { session } } = await sb.auth.getSession();
-  state.user = session?.user ?? null;
+  const fromEmailLink = authNotice || recoveryTokens; // veio de um link do e-mail: abre a conta, não o modo sem conta
+  if (store.get('lc:guest') && !fromEmailLink) enterGuest(); // sem conta: nem consulta o Supabase
+  else {
+    store.del('lc:guest');
+    const { data: { session } } = await realSb.auth.getSession();
+    state.user = session?.user ?? null;
+  }
 
-  sb.auth.onAuthStateChange((event, sess) => {
+  realSb.auth.onAuthStateChange((event, sess) => {
+    if (state.guest) return; // no modo sem conta, a conta não interessa
     const newId = sess?.user?.id ?? null;
     if (newId === (state.user?.id ?? null)) return; // ignora TOKEN_REFRESHED etc.
     state.user = sess?.user ?? null;
@@ -393,6 +422,36 @@ async function init() {
   route();
   if (authNotice && state.user) { toast(authNotice.msg, authNotice.err); authNotice = null; } // já estava logado neste aparelho
   flushQueue();
+}
+
+/* ------------------------------ Modo sem conta ---------------------------- */
+function enterGuest() {
+  store.set('lc:guest', true);
+  sb = localSb;
+  state.guest = true;
+  state.recovery = false;
+  state.user = { id: 'guest', email: '' };
+  try { navigator.storage?.persist?.(); } catch { /* pedido opcional */ } // pede ao navegador para não apagar os dados sozinho
+}
+async function exitGuest(toSignup = false) {
+  store.del('lc:guest');
+  teardownRealtime(); // ainda com o cliente local
+  state.guest = false;
+  sb = realSb;
+  state.lists = []; state.items = []; state.listId = null;
+  state.authMode = toSignup ? 'signup' : 'login';
+  const { data: { session } } = await realSb.auth.getSession();
+  state.user = session?.user ?? null;
+  if (location.hash !== '#/') location.hash = '#/';
+  route();
+}
+function openGuestWarning() {
+  dlg.classList.remove('guest');
+  dlg.innerHTML = `<h3>${esc(t('guestTitle'))}</h3><div class="tipbody">${t('guestWarn')}</div>
+    <div class="row"><button type="button" data-close>${esc(t('cancel'))}</button><button class="primary" type="button" id="guest-ok">${esc(t('guestContinue'))}</button></div>`;
+  dlg.querySelector('[data-close]').onclick = () => dlg.close();
+  dlg.querySelector('#guest-ok').onclick = () => { dlg.close(); enterGuest(); route(); };
+  dlg.showModal();
 }
 
 const PASS_PATTERN = '(?=.*[A-Za-z])(?=.*\\d).{8,}';
@@ -435,6 +494,7 @@ function renderAuth(info = '', isErr = false) {
     <button class="switch" id="switch-mode" type="button">
       ${esc(forgot ? t('backToLogin') : login ? t('noAccount') : t('haveAccount'))}
     </button>
+    ${forgot ? '' : `<button class="ghost guest-btn" id="guest-btn" type="button">${esc(t('guestBtn'))}</button>`}
     <p class="sub"><a href="${HELP_URL[L]}" target="_blank" rel="noopener">${esc(t('help'))}</a> &middot; <a href="${PRIVACY_URL[L]}" target="_blank" rel="noopener">${esc(t('privacy'))}</a></p>
     <p class="sub">${langSelectHtml()}</p>
     ${appFootHtml()}
@@ -446,6 +506,7 @@ function renderAuth(info = '', isErr = false) {
   bindPassMatch(form);
   const keepEmail = () => { state.prefillEmail = form.elements.email.value.trim(); };
   $('#switch-mode').onclick = () => { keepEmail(); state.authMode = forgot || !login ? 'login' : 'signup'; renderAuth(); };
+  $('#guest-btn')?.addEventListener('click', openGuestWarning);
   const fg = $('#forgot');
   if (fg) fg.onclick = () => { keepEmail(); state.authMode = 'forgot'; renderAuth(); };
   form.onsubmit = async (e) => {
@@ -542,6 +603,7 @@ function translateServerMsg(m) {
 }
 
 async function logout() {
+  if (state.guest) return exitGuest(false); // sair do modo sem conta: as listas continuam neste aparelho
   teardownRealtime();
   await sb.auth.signOut();
 }
@@ -576,7 +638,7 @@ async function loadLists() {
     sb.from('shopping_lists').select('*').order('created_at', { ascending: false }),
     sb.from('shopping_items').select('list_id, price, quantity'),
   ]);
-  if (lr.error) { if (navigator.onLine) toast(t('errLoadLists'), true); return; }
+  if (lr.error) { if (isOnline()) toast(t('errLoadLists'), true); return; }
   state.lists = applyListOps(lr.data); // excluídas/renomeadas sem sinal continuam valendo
   store.set(listsKey(), state.lists);
   if (!ir.error) {
@@ -590,7 +652,7 @@ async function loadLists() {
 
 function renderLists() {
   const me = state.user.id;
-  const renamedPending = pendingListOps().renamed;
+  const { renamed: renamedPending, created: createdPending } = pendingListOps();
   app.innerHTML = `
   <div class="topbar">
     <h1>${esc(t('myLists'))}</h1>
@@ -598,6 +660,7 @@ function renderLists() {
     ${langSelectHtml()}
     <button class="ghost" id="logout" title="${esc(t('signout'))}">${esc(t('signout'))}</button>
   </div>
+  ${state.guest ? `<div class="guest-banner"><span>⚠️ ${esc(t('guestBanner'))}</span><button type="button" id="guest-signup">${esc(t('guestSignup'))}</button></div>` : ''}
   <form class="newlist" id="newlist">
     <input name="name" placeholder="${esc(t('newListPh'))}" maxlength="80" required>
     <button class="primary" type="submit">${esc(t('create'))}</button>
@@ -607,7 +670,7 @@ function renderLists() {
     ${state.lists.length ? state.lists.map((l) => `
       <button class="list-card" data-open="${l.id}">
         <span class="ico">${l.owner_id === me ? '📋' : '🤝'}</span>
-        <span class="grow"><span class="name">${esc(l.name)}${renamedPending[l.id] ? ' ⏳' : ''}</span><br>
+        <span class="grow"><span class="name">${esc(l.name)}${renamedPending[l.id] || createdPending[l.id] ? ' ⏳' : ''}</span><br>
           <span class="meta">${esc(l.owner_id === me ? t('yourList') : t('sharedWithYou'))}</span></span>
         <span class="total">${money(Math.round((state.totals[l.id] || 0) * 100) / 100)}</span>
         <span>›</span>
@@ -620,13 +683,18 @@ function renderLists() {
   updatePending();
   $('#tips-btn').onclick = openTipsPanel;
   $('#logout').onclick = logout;
+  $('#guest-signup')?.addEventListener('click', () => exitGuest(true));
   $('#newlist').onsubmit = async (e) => {
     e.preventDefault();
     const name = new FormData(e.target).get('name').trim();
     if (!name) return;
-    const { data, error } = await sb.from('shopping_lists').insert({ name, owner_id: state.user.id }).select().single();
-    if (error) return toast(t('errCreateList'), true);
-    location.hash = `#/list/${data.id}`;
+    // a lista aparece e abre na hora; o envio vai pela fila (na ordem certa, antes dos itens dela)
+    const row = { id: newId(), name, owner_id: state.user.id, created_at: new Date().toISOString() };
+    state.lists = [row, ...state.lists];
+    store.set(listsKey(), state.lists);
+    enqueueListNew(row, isOnline());
+    flushQueue();
+    location.hash = `#/list/${row.id}`;
   };
   app.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => (location.hash = `#/list/${b.dataset.open}`)));
 }
@@ -663,7 +731,7 @@ const isOwner = () => currentList()?.owner_id === state.user.id;
 async function loadItems() {
   const id = state.listId;
   const { data, error } = await sb.from('shopping_items').select('*').eq('list_id', id);
-  if (error) { if (navigator.onLine) toast(t('errLoadItems'), true); return; }
+  if (error) { if (isOnline()) toast(t('errLoadItems'), true); return; }
   applyItems(id, data);
 }
 function applyItems(id, data) {
@@ -694,7 +762,7 @@ function renderListShell(soft = false) {
   <div class="topbar">
     <button class="icon ghost" id="back" aria-label="${esc(t('back'))}">←</button>
     <h1 id="list-title">${esc(l ? l.name : t('listDefault'))}</h1>
-    <span class="live ${state.live ? 'on' : ''}" id="live" title="${esc(t('liveTitle'))}"></span>
+    ${state.guest ? '' : `<span class="live ${state.live ? 'on' : ''}" id="live" title="${esc(t('liveTitle'))}"></span>`}
     <button class="icon ghost" id="tips-btn" aria-label="${esc(t('tipsBtn'))}" title="${esc(t('tipsBtn'))}">💡</button>
     <button class="icon ghost" id="share" aria-label="${esc(t('shareOptions'))}">👥</button>
   </div>
@@ -734,7 +802,7 @@ function renderListShell(soft = false) {
     f.name.value = ''; f.quantity.value = ''; f.price.value = ''; manualCat = false;
     f.name.focus();
     upsertItem(localItem(row)); // aparece na hora, com ou sem sinal
-    if (!navigator.onLine) return enqueueAdd(row);
+    if (!isOnline() || isPendingNewList(row.list_id)) { enqueueAdd(row, isOnline()); return flushQueue(); } // lista nova ainda não enviada: o item espera na fila, depois dela
     const { error } = await timed(sb.from('shopping_items').insert(row));
     if (error && error.code !== '23505') {
       if (isNetErr(error)) return enqueueAdd(row); // sinal fraco: guarda e envia depois
@@ -822,7 +890,7 @@ async function toggleItem(id) {
   const next = !it.is_checked;
   upsertItem({ ...it, is_checked: next }); // vale na hora, mesmo sem sinal
   if (isPendingAdd(id)) { editPendingAdd(id, { is_checked: next }); return flushQueue(); } // item ainda não enviado: a marca vai junto
-  if (!navigator.onLine) return enqueue(it, next);
+  if (!isOnline()) return enqueue(it, next);
   const { error } = await timed(sb.from('shopping_items').update({ is_checked: next }).eq('id', id));
   if (error) {
     if (isNetErr(error)) return enqueue(it, next); // sinal fraco: guarda e envia depois
@@ -838,14 +906,14 @@ async function deleteItem(id) {
   if (!it) return;
   if (isPendingAdd(id)) { dropPendingAdd(id); return removeItem(id); } // nunca chegou ao banco: basta descartar
   removeItem(id); // some da tela na hora, com ou sem sinal
-  enqueueDel(it, navigator.onLine);
+  enqueueDel(it, isOnline());
   flushQueue();
 }
 
 async function clearChecked() {
   const checked = state.items.filter((i) => i.is_checked);
   if (!checked.length || !confirm(t('confirmClear', { n: checked.length }))) return;
-  for (const i of checked) { if (isPendingAdd(i.id)) dropPendingAdd(i.id); else enqueueDel(i, navigator.onLine); }
+  for (const i of checked) { if (isPendingAdd(i.id)) dropPendingAdd(i.id); else enqueueDel(i, isOnline()); }
   state.items = state.items.filter((i) => !i.is_checked);
   persistItems();
   renderItems();
@@ -886,7 +954,7 @@ function openEditDialog(id) {
     if (!Object.keys(patch).length) return;
     upsertItem({ ...it, ...patch }); // vale na hora, com ou sem sinal
     if (isPendingAdd(id)) return editPendingAdd(id, patch); // item novo ainda não enviado: edita a cópia da fila
-    enqueueEdit(it, patch, navigator.onLine);
+    enqueueEdit(it, patch, isOnline());
     flushQueue();
   };
   dlg.showModal();
@@ -896,12 +964,14 @@ function openShareDialog() {
   const l = currentList();
   const owner = isOwner();
   const me = state.user.id;
+  dlg.classList.toggle('guest', !!state.guest); // sem conta: sem lista de participantes
   dlg.innerHTML = `
   <h3>👥 ${esc(l?.name || t('listDefault'))}</h3>
   <div class="stack">
-    ${owner && !tipSeen('share') ? `<div class="msg tiphint" id="share-tip"><strong>${esc(t('tip_share_t'))}</strong><br>${t('tip_share_b')}<br><button type="button" data-tip-ok>${esc(t('tipOk'))}</button></div>` : ''}
+    ${owner && !state.guest && !tipSeen('share') ? `<div class="msg tiphint" id="share-tip"><strong>${esc(t('tip_share_t'))}</strong><br>${t('tip_share_b')}<br><button type="button" data-tip-ok>${esc(t('tipOk'))}</button></div>` : ''}
     ${owner ? `<form id="rename-form" class="newlist"><input name="name" value="${esc(l?.name || '')}" maxlength="80" required aria-label="${esc(t('renameList'))}" placeholder="${esc(t('renameList'))}"><button class="primary" type="submit">${esc(t('save'))}</button></form>` : ''}
-    ${owner ? `
+    ${state.guest ? `<div class="msg">${esc(t('guestNoShare'))}</div>` : owner && isPendingNewList(l?.id) ? `<div class="msg">${esc(t('listNotSent'))}</div>` : ''}
+    ${owner && !state.guest && !isPendingNewList(l?.id) ? `
     <form id="share-form" class="stack">
       <input name="email" type="email" placeholder="${esc(t('shareEmailPh'))}" required>
       <button class="primary" type="submit">${esc(t('share'))}</button>
@@ -937,7 +1007,8 @@ function openShareDialog() {
     cur.name = name; // vale na hora, com ou sem sinal
     store.set(listsKey(), state.lists);
     $('#list-title').textContent = name;
-    enqueueListRename(cur, name, navigator.onLine);
+    if (isPendingNewList(cur.id)) editPendingNewList(cur.id, name); // ainda não enviada: troca o nome na fila
+    else enqueueListRename(cur, name, isOnline());
     flushQueue();
   };
 
@@ -966,7 +1037,8 @@ function openShareDialog() {
     if (!confirm(t('confirmDelete'))) return;
     const gone = currentList();
     dlg.close();
-    enqueueListGone(gone, 'ldel', navigator.onLine); // some na hora; o servidor recebe quando houver sinal
+    if (isPendingNewList(gone.id)) dropListEntries(gone.id); // nunca chegou ao banco: basta descartar
+    else enqueueListGone(gone, 'ldel', isOnline()); // some na hora; o servidor recebe quando houver sinal
     afterListGone();
     flushQueue();
   };
@@ -975,7 +1047,7 @@ function openShareDialog() {
     if (!confirm(t('confirmLeave'))) return;
     const gone = currentList();
     dlg.close();
-    enqueueListGone(gone, 'lleave', navigator.onLine);
+    enqueueListGone(gone, 'lleave', isOnline());
     afterListGone();
     flushQueue();
   };
@@ -1030,7 +1102,7 @@ function teardownRealtime() {
 
 // Ao voltar para o app (celular desbloqueado / aba reaberta) ressincroniza
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !state.user || !navigator.onLine) return;
+  if (document.visibilityState !== 'visible' || !state.user || !isOnline()) return;
   flushQueue();
   if (state.listId) loadItems(); else loadLists();
 });

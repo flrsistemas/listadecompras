@@ -1,5 +1,5 @@
 // Service worker — caminhos relativos (compatível com GitHub Pages em subpasta)
-const VERSION = 'v19';
+const VERSION = 'v21';
 const CACHE = `lista-compras-${VERSION}`;
 const SHELL = [
   './',
@@ -8,6 +8,7 @@ const SHELL = [
   './js/app.js',
   './js/config.js',
   './js/i18n.js',
+  './js/local-store.js',
   './manifest.json',
   './icons/icon.svg',
 ];
