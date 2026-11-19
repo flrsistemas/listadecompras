@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>Lista de Compras — FLR Sistemas</title>
-<meta name="description" content="Listas de compras compartilhadas em tempo real, com preço dos itens e total da lista. Funciona no navegador e instala no celular.">
+<meta name="description" content="Shopping lists shared in real time, with item prices and a list total. Works in the browser and installs on your phone.">
 <link rel="canonical" href="https://flrsistemas.com.br/listadecompras/sobre/">
-<link rel="alternate" hreflang="pt" href="https://flrsistemas.com.br/listadecompras/sobre/">
-<link rel="alternate" hreflang="en" href="https://flrsistemas.com.br/listadecompras/sobre/en/">
+<link rel="alternate" hreflang="pt" href="https://flrsistemas.com.br/listadecompras/sobre/pt/">
+<link rel="alternate" hreflang="en" href="https://flrsistemas.com.br/listadecompras/sobre/">
 <link rel="alternate" hreflang="es" href="https://flrsistemas.com.br/listadecompras/sobre/es/">
 <link rel="alternate" hreflang="x-default" href="https://flrsistemas.com.br/listadecompras/sobre/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="FLR Sistemas">
-<meta property="og:locale" content="pt_BR">
+<meta property="og:locale" content="en_US">
 <meta property="og:title" content="Lista de Compras — FLR Sistemas">
-<meta property="og:description" content="Listas de compras compartilhadas em tempo real, com preço dos itens e total da lista. Funciona no navegador e instala no celular.">
+<meta property="og:description" content="Shopping lists shared in real time, with item prices and a list total. Works in the browser and installs on your phone.">
 <meta property="og:url" content="https://flrsistemas.com.br/listadecompras/sobre/">
 <style>
   :root {
@@ -75,13 +75,12 @@
   .langs a[aria-current="page"] { color: var(--text); border-color: var(--muted); font-weight: 600; }
 </style>
 <script>
-  /* Escolha automatica de idioma, so na primeira visita e so na pagina padrao (pt). */
+  /* Escolha automatica de idioma, so na primeira visita e so na pagina padrao (en). */
   (function () {
     try {
       var salvo = localStorage.getItem('lang');
-      var l = salvo || String((navigator.languages && navigator.languages[0]) || navigator.language || 'pt').slice(0, 2).toLowerCase();
-      if (l === 'pt') return;
-      location.replace('/listadecompras/sobre/' + (l === 'es' ? 'es' : 'en') + '/');
+      var l = salvo || String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').slice(0, 2).toLowerCase();
+      if (l === 'pt' || l === 'es') location.replace('/listadecompras/sobre/' + l + '/');
     } catch (e) {}
   })();
 </script>
@@ -91,102 +90,102 @@
 
   <header class="site topbar">
     <a class="back" href="/">← FLR Sistemas</a>
-    <nav class="langs" aria-label="Language"><a href="/listadecompras/sobre/" lang="pt" hreflang="pt" aria-current="page" onclick="try{localStorage.setItem('lang','pt')}catch(e){}">PT</a><a href="/listadecompras/sobre/en/" lang="en" hreflang="en" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a><a href="/listadecompras/sobre/es/" lang="es" hreflang="es" onclick="try{localStorage.setItem('lang','es')}catch(e){}">ES</a></nav>
+    <nav class="langs" aria-label="Language"><a href="/listadecompras/sobre/pt/" lang="pt" hreflang="pt" onclick="try{localStorage.setItem('lang','pt')}catch(e){}">PT</a><a href="/listadecompras/sobre/" lang="en" hreflang="en" aria-current="page" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a><a href="/listadecompras/sobre/es/" lang="es" hreflang="es" onclick="try{localStorage.setItem('lang','es')}catch(e){}">ES</a></nav>
   </header>
 
   <article class="app" id="listadecompras">
     <h2>Lista de Compras</h2>
-    <p class="lead">Faça as compras em conjunto: listas compartilhadas que se atualizam em tempo real.</p>
+    <p class="lead">Shop together: shared lists that update in real time.</p>
 
     <div class="actions">
-      <a class="button" href="/listadecompras/">Abrir o app</a>
-      <a class="link" href="#how">Como funciona</a>
-      <a class="link" href="/listadecompras/ajuda/">Ajuda</a>
+      <a class="button" href="/listadecompras/">Open the app</a>
+      <a class="link" href="#how">How it works</a>
+      <a class="link" href="/listadecompras/ajuda/">Help</a>
     </div>
-    <p class="note">App web (PWA) para quem divide as compras da casa. Funciona no navegador e instala no celular, sem loja de aplicativos.</p>
+    <p class="note">Web app (PWA) for anyone sharing the household shopping. Works in the browser and installs on your phone, no app store needed. The app comes in English, Portuguese and Spanish.</p>
 
-    <h3 class="section">O que ele faz</h3>
-    <p>Crie uma lista, convide quem compra com você pelo e-mail e pronto: cada item marcado, adicionado ou removido aparece na hora para todos. Anote o preço de cada item e acompanhe quanto a compra vai custar.</p>
+    <h3 class="section">What it does</h3>
+    <p>Create a list, invite the people you shop with by e-mail, and that is it: every item checked, added or removed shows up instantly for everyone. Add each item's price and keep track of what the shopping will cost.</p>
 
     <div class="grid" style="margin-top:18px">
       <div class="card">
-        <h4>Compartilhe por e-mail</h4>
-        <p>Convide familiares ou amigos pelo e-mail da conta deles. Só quem foi convidado vê a lista.</p>
+        <h4>Share by e-mail</h4>
+        <p>Invite family or friends using the e-mail of their account. Only invited people can see the list.</p>
       </div>
       <div class="card">
-        <h4>Tempo real</h4>
-        <p>Marcou o leite como comprado? Todo mundo vê na mesma hora, sem recarregar a página.</p>
+        <h4>Real time</h4>
+        <p>Checked the milk off? Everyone sees it right away, without reloading the page.</p>
       </div>
       <div class="card">
-        <h4>Preço e total</h4>
-        <p>Informe o preço de cada item e veja o total de cada lista, já nos cartões da tela inicial.</p>
+        <h4>Price and total</h4>
+        <p>Enter each item's price and see every list's total, right on the cards of the home screen.</p>
       </div>
       <div class="card">
-        <h4>Por categoria</h4>
-        <p>Os itens se organizam em Hortifruti, Açougue, Padaria e outras, e o app sugere a categoria pelo nome.</p>
+        <h4>By category</h4>
+        <p>Items are grouped into Produce, Butcher, Bakery and more, and the app suggests the category from the name.</p>
       </div>
       <div class="card">
-        <h4>Consulte sem sinal</h4>
-        <p>No supermercado sem internet, você ainda vê a última versão salva da lista.</p>
+        <h4>Check it offline</h4>
+        <p>At the supermarket with no signal, you can still see the last saved version of the list.</p>
       </div>
       <div class="card">
-        <h4>Instala como app</h4>
-        <p>Adicione à tela inicial do celular e abra como qualquer outro aplicativo.</p>
+        <h4>Installs like an app</h4>
+        <p>Add it to your phone's home screen and open it like any other app.</p>
       </div>
     </div>
 
-    <h3 class="section">Como ele é</h3>
-    <p class="note" style="margin:0 0 10px">Telas do app com dados de exemplo.</p>
+    <h3 class="section">What it looks like</h3>
+    <p class="note" style="margin:0 0 10px">App screens with sample data.</p>
     <div class="shots">
       <figure>
-        <img src="/listadecompras/sobre/img/lista-listas.png" width="1000" height="2120" loading="lazy"
-             alt="Tela com as listas de compras e o total de cada uma.">
-        <figcaption>Suas listas, com o total de cada uma</figcaption>
+        <img src="/listadecompras/sobre/img/lista-listas-en.png" width="1000" height="2120" loading="lazy"
+             alt="Screen with the shopping lists and each list's total.">
+        <figcaption>Your lists, with each one's total</figcaption>
       </figure>
       <figure>
-        <img src="/listadecompras/sobre/img/lista-itens.png" width="1000" height="2120" loading="lazy"
-             alt="Tela de uma lista com itens por categoria, preços e o total da lista.">
-        <figcaption>Itens por categoria, com preço</figcaption>
+        <img src="/listadecompras/sobre/img/lista-itens-en.png" width="1000" height="2120" loading="lazy"
+             alt="A list screen with items by category, prices and the list total.">
+        <figcaption>Items by category, with prices</figcaption>
       </figure>
       <figure>
-        <img src="/listadecompras/sobre/img/lista-compartilhar.png" width="1000" height="2120" loading="lazy"
-             alt="Janela para compartilhar a lista por e-mail e ver os participantes.">
-        <figcaption>Compartilhando com quem vai comprar junto</figcaption>
+        <img src="/listadecompras/sobre/img/lista-compartilhar-en.png" width="1000" height="2120" loading="lazy"
+             alt="Dialog for sharing the list by e-mail and seeing its members.">
+        <figcaption>Sharing with whoever shops with you</figcaption>
       </figure>
     </div>
 
-    <h3 class="section" id="how">Como funciona</h3>
+    <h3 class="section" id="how">How it works</h3>
     <ol class="steps">
       <li>
-        <h4>Crie sua conta</h4>
-        <p>Cadastre-se com nome, e-mail e uma senha de pelo menos 8 caracteres, com letras e números. Confirme o e-mail que você receber e entre.</p>
+        <h4>Create your account</h4>
+        <p>Sign up with your name, e-mail and a password of at least 8 characters, with letters and numbers. Confirm the e-mail you receive and sign in.</p>
       </li>
       <li>
-        <h4>Crie uma lista</h4>
-        <p>Dê um nome, como "Mercado do mês", e toque em Criar.</p>
+        <h4>Create a list</h4>
+        <p>Give it a name, like "Monthly groceries", and tap "Create".</p>
       </li>
       <li>
-        <h4>Adicione os itens</h4>
-        <p>Digite o nome, e se quiser a quantidade e o preço. A categoria é sugerida sozinha, e você pode trocar.</p>
+        <h4>Add the items</h4>
+        <p>Type the name, and the quantity and price if you like. The category is suggested automatically, and you can change it.</p>
       </li>
       <li>
-        <h4>Compartilhe</h4>
-        <p>Toque no ícone de pessoas, informe o e-mail de quem vai participar e toque em Compartilhar. A pessoa precisa já ter uma conta.</p>
+        <h4>Share</h4>
+        <p>Tap the people icon, enter the e-mail of who will join and tap "Share". That person needs to have an account already.</p>
       </li>
     </ol>
 
-    <h3 class="section">Instalar no celular</h3>
-    <p><strong>Android (Chrome):</strong> abra o app, toque no menu ⋮ e em "Instalar app" ou "Adicionar à tela inicial".<br><strong>iPhone (Safari):</strong> toque em Compartilhar e em "Adicionar à Tela de Início".</p>
+    <h3 class="section">Install on your phone</h3>
+    <p><strong>Android (Chrome):</strong> open the app, tap the ⋮ menu and "Install app" or "Add to home screen".<br><strong>iPhone (Safari):</strong> tap Share and "Add to Home Screen".</p>
 
     <div class="summary" style="margin-top:28px">
-      <p>Cada lista só é visível para quem foi convidado. O dono pode remover participantes ou excluir a lista, e cada participante pode sair da lista quando quiser.</p>
+      <p>Each list is visible only to the people invited. The owner can remove members or delete the list, and each member can leave the list at any time.</p>
     </div>
   </article>
 
   <footer>
     <p>
       FLR Sistemas<br>
-      Contato: <a href="mailto:contato@flrsistemas.com.br">contato@flrsistemas.com.br</a>
+      Contact: <a href="mailto:contato@flrsistemas.com.br">contato@flrsistemas.com.br</a>
     </p>
   </footer>
 

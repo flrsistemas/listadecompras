@@ -54,6 +54,7 @@ input, select {
 input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: transparent; }
 
 .topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.lang-sel { width: auto; min-height: 36px; padding: 4px 8px; border-radius: 10px; font-size: .85rem; }
 .topbar h1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
 

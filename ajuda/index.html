@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>Ajuda — Lista de Compras</title>
-<meta name="description" content="Perguntas frequentes sobre o app Lista de Compras.">
+<title>Help — Lista de Compras</title>
+<meta name="description" content="Frequently asked questions about the Lista de Compras app.">
 <link rel="canonical" href="https://flrsistemas.com.br/listadecompras/ajuda/">
-<link rel="alternate" hreflang="pt" href="https://flrsistemas.com.br/listadecompras/ajuda/">
-<link rel="alternate" hreflang="en" href="https://flrsistemas.com.br/listadecompras/ajuda/en/">
+<link rel="alternate" hreflang="pt" href="https://flrsistemas.com.br/listadecompras/ajuda/pt/">
+<link rel="alternate" hreflang="en" href="https://flrsistemas.com.br/listadecompras/ajuda/">
 <link rel="alternate" hreflang="es" href="https://flrsistemas.com.br/listadecompras/ajuda/es/">
 <link rel="alternate" hreflang="x-default" href="https://flrsistemas.com.br/listadecompras/ajuda/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="FLR Sistemas">
-<meta property="og:locale" content="pt_BR">
-<meta property="og:title" content="Ajuda — Lista de Compras">
-<meta property="og:description" content="Perguntas frequentes sobre o app Lista de Compras.">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Help — Lista de Compras">
+<meta property="og:description" content="Frequently asked questions about the Lista de Compras app.">
 <meta property="og:url" content="https://flrsistemas.com.br/listadecompras/ajuda/">
 <style>
   :root {
@@ -84,9 +84,8 @@
   (function () {
     try {
       var salvo = localStorage.getItem('lang');
-      var l = salvo || String((navigator.languages && navigator.languages[0]) || navigator.language || 'pt').slice(0, 2).toLowerCase();
-      if (l === 'pt') return;
-      location.replace('/listadecompras/ajuda/' + (l === 'es' ? 'es' : 'en') + '/');
+      var l = salvo || String((navigator.languages && navigator.languages[0]) || navigator.language || 'en').slice(0, 2).toLowerCase();
+      if (l === 'pt' || l === 'es') location.replace('/listadecompras/ajuda/' + l + '/');
     } catch (e) {}
   })();
 </script>
@@ -96,7 +95,7 @@
 
   <header class="site topbar">
     <a class="back" href="/listadecompras/sobre/">← Lista de Compras</a>
-    <nav class="langs" aria-label="Language"><a href="/listadecompras/ajuda/" lang="pt" hreflang="pt" aria-current="page" onclick="try{localStorage.setItem('lang','pt')}catch(e){}">PT</a><a href="/listadecompras/ajuda/en/" lang="en" hreflang="en" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a><a href="/listadecompras/ajuda/es/" lang="es" hreflang="es" onclick="try{localStorage.setItem('lang','es')}catch(e){}">ES</a></nav>
+    <nav class="langs" aria-label="Language"><a href="/listadecompras/ajuda/pt/" lang="pt" hreflang="pt" onclick="try{localStorage.setItem('lang','pt')}catch(e){}">PT</a><a href="/listadecompras/ajuda/" lang="en" hreflang="en" aria-current="page" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a><a href="/listadecompras/ajuda/es/" lang="es" hreflang="es" onclick="try{localStorage.setItem('lang','es')}catch(e){}">ES</a></nav>
   </header>
 
   <article class="app" id="ajuda" style="margin-top:12px;padding-top:0;border-top:0">
@@ -129,74 +128,76 @@
     .help-cta { margin-top: 36px; }
   </style>
 
-  <h1 class="page">Ajuda</h1>
-  <p class="intro">Respostas rápidas sobre o <strong>Lista de Compras</strong>.</p>
+  <h1 class="page">Help</h1>
+  <p class="intro">Quick answers about <strong>Lista de Compras</strong>.</p>
 
-  <input class="help-search" id="help-q" type="search" placeholder="Buscar uma pergunta…" aria-label="Buscar uma pergunta…">
-  <ul class="topics"><li><a href="#start">🚀 Começando</a></li><li><a href="#lists">🛒 Listas e itens</a></li><li><a href="#share">🤝 Compartilhamento</a></li><li><a href="#account">🔒 Conta e dados</a></li></ul>
+  <input class="help-search" id="help-q" type="search" placeholder="Search a question…" aria-label="Search a question…">
+  <ul class="topics"><li><a href="#start">🚀 Getting started</a></li><li><a href="#lists">🛒 Lists and items</a></li><li><a href="#share">🤝 Sharing</a></li><li><a href="#account">🔒 Account and data</a></li></ul>
 
   <section class="faq-group" id="start">
-    <h2><span class="ico">🚀</span>Começando<span class="count">3 perguntas</span></h2>
+    <h2><span class="ico">🚀</span>Getting started<span class="count">4 questions</span></h2>
     <div class="faq-list">
-      <details><summary>Como crio a minha conta?</summary>
-        <p>Na tela inicial do app, toque em "Cadastre-se", informe nome, e-mail e uma senha de no mínimo 8 caracteres, com letras e números. Você recebe um e-mail para confirmar o cadastro; depois é só entrar.</p></details>
-      <details><summary>Não recebi o e-mail de confirmação</summary>
-        <p>Espere alguns minutos e olhe a caixa de spam ou lixo eletrônico. O e-mail vem de "Supabase Auth", o serviço que cuida do login. Se continuar sem chegar, escreva para nós com o e-mail que você usou.</p></details>
-      <details><summary>Como instalo no celular?</summary>
-        <p>No Android (Chrome), abra o app, toque no menu ⋮ e em "Instalar app" ou "Adicionar à tela inicial".</p>
-        <p>No iPhone (Safari), toque em Compartilhar e em "Adicionar à Tela de Início".</p></details>
+      <details><summary>How do I create my account?</summary>
+        <p>On the app's first screen, tap "Sign up", enter your name, e-mail and a password of at least 8 characters, with letters and numbers. You get an e-mail to confirm the sign-up; then just sign in.</p></details>
+      <details><summary>I did not get the confirmation e-mail</summary>
+        <p>Wait a few minutes and check your spam or junk folder. The e-mail comes from "Supabase Auth", the service that handles sign-in. If it still does not arrive, write to us with the e-mail you used.</p></details>
+      <details><summary>How do I install it on my phone?</summary>
+        <p>On Android (Chrome), open the app, tap the ⋮ menu and "Install app" or "Add to home screen".</p>
+        <p>On iPhone (Safari), tap Share and "Add to Home Screen".</p></details>
+      <details><summary>Can I change the app language?</summary>
+        <p>Yes. The app comes in English, Portuguese and Spanish and starts in your device language. To switch, use the language selector on the sign-in screen or at the top of the "My lists" screen.</p></details>
     </div>
   </section>
 
   <section class="faq-group" id="lists">
-    <h2><span class="ico">🛒</span>Listas e itens<span class="count">5 perguntas</span></h2>
+    <h2><span class="ico">🛒</span>Lists and items<span class="count">5 questions</span></h2>
     <div class="faq-list">
-      <details><summary>Como crio uma lista?</summary>
-        <p>Na tela "Minhas listas", digite um nome, como "Mercado do mês", e toque em "Criar".</p></details>
-      <details><summary>Como adiciono, edito e marco itens?</summary>
-        <p>Dentro da lista, digite o nome no campo "Adicionar item…", escolha a categoria (o app sugere uma) e, se quiser, informe quantidade e preço. Toque em "Adicionar".</p>
-        <p>Para marcar como comprado, toque no quadradinho do item. Para editar, toque no nome. Para remover, toque no ✕.</p></details>
-      <details><summary>Como informo o preço dos itens?</summary>
-        <p>Use o campo "Preço (R$)" ao adicionar o item, ou toque no item para editar. O total aparece dentro da lista e no cartão dela. O app não multiplica por quantidade: informe o valor do item inteiro.</p></details>
-      <details><summary>Como limpo os itens já comprados?</summary>
-        <p>Na lista, toque em "Limpar comprados", ao lado do título "Comprados". Isso remove só os itens marcados, para todos os participantes.</p></details>
-      <details><summary>Como excluo uma lista?</summary>
-        <p>Abra a lista, toque no ícone de pessoas (👥) e em "Excluir lista". Isso apaga a lista e todos os itens para todos os participantes e não dá para desfazer. Só o dono vê esse botão.</p></details>
+      <details><summary>How do I create a list?</summary>
+        <p>On the "My lists" screen, type a name, like "Monthly groceries", and tap "Create".</p></details>
+      <details><summary>How do I add, edit and check items?</summary>
+        <p>Inside the list, type the name in "Add item…", pick the category (the app suggests one) and, if you like, enter quantity and price. Tap "Add".</p>
+        <p>To mark an item as bought, tap its checkbox. To edit, tap the name. To remove it, tap the ✕.</p></details>
+      <details><summary>How do I set item prices?</summary>
+        <p>Use the "Price (R$)" field when adding the item, or tap the item to edit it. The total shows inside the list and on its card. The app does not multiply by quantity: enter the price for the whole item.</p></details>
+      <details><summary>How do I clear the items already bought?</summary>
+        <p>In the list, tap "Clear bought", next to the "Bought" heading. This removes only the checked items, for every member.</p></details>
+      <details><summary>How do I delete a list?</summary>
+        <p>Open the list, tap the people icon (👥) and "Delete list". This deletes the list and all its items for every member and cannot be undone. Only the owner sees this button.</p></details>
     </div>
   </section>
 
   <section class="faq-group" id="share">
-    <h2><span class="ico">🤝</span>Compartilhamento<span class="count">4 perguntas</span></h2>
+    <h2><span class="ico">🤝</span>Sharing<span class="count">4 questions</span></h2>
     <div class="faq-list">
-      <details><summary>Como compartilho uma lista?</summary>
-        <p>Abra a lista, toque no ícone de pessoas (👥), informe o e-mail de quem vai participar e toque em "Compartilhar". Só o dono da lista pode compartilhar.</p></details>
-      <details><summary>Aparece "Nenhum usuário cadastrado com este e-mail"</summary>
-        <p>A pessoa precisa criar a conta no app antes, com esse mesmo e-mail. Depois disso, compartilhe de novo.</p></details>
-      <details><summary>Como removo alguém da lista?</summary>
-        <p>Abra a lista, toque em 👥 e em "Remover", ao lado do nome. Só o dono pode remover participantes.</p></details>
-      <details><summary>Como saio de uma lista que compartilharam comigo?</summary>
-        <p>Abra a lista, toque em 👥 e em "Sair da lista". Isso tira só você; a lista continua para os outros.</p></details>
+      <details><summary>How do I share a list?</summary>
+        <p>Open the list, tap the people icon (👥), enter the e-mail of who will join and tap "Share". Only the list owner can share it.</p></details>
+      <details><summary>It says "No registered user with this e-mail"</summary>
+        <p>That means no account exists with that e-mail. The person needs to create an account in the app first, with that same e-mail. Then share again.</p></details>
+      <details><summary>How do I remove someone from the list?</summary>
+        <p>Open the list, tap 👥 and "Remove" next to the name. Only the owner can remove members.</p></details>
+      <details><summary>How do I leave a list that was shared with me?</summary>
+        <p>Open the list, tap 👥 and "Leave list". This removes only you; the list stays for the others.</p></details>
     </div>
   </section>
 
   <section class="faq-group" id="account">
-    <h2><span class="ico">🔒</span>Conta e dados<span class="count">3 perguntas</span></h2>
+    <h2><span class="ico">🔒</span>Account and data<span class="count">3 questions</span></h2>
     <div class="faq-list">
-      <details><summary>Esqueci a minha senha</summary>
-        <p>O app ainda não tem recuperação de senha pela tela de login. Escreva para nós, do e-mail cadastrado, e ajudamos a recuperar o acesso.</p></details>
-      <details><summary>Como apago a minha conta e os meus dados?</summary>
-        <p>Escreva para nós, do e-mail cadastrado, pedindo a exclusão. Veja a <a href="/listadecompras/privacy.html">política de privacidade</a> para saber o que é apagado.</p></details>
-      <details><summary>Funciona sem internet?</summary>
-        <p>Você consegue consultar a última versão salva das suas listas. Para adicionar, marcar ou remover itens, é preciso estar conectado.</p></details>
+      <details><summary>I forgot my password</summary>
+        <p>The app does not have password recovery on the sign-in screen yet. Write to us from the e-mail you registered with and we will help you get back in.</p></details>
+      <details><summary>How do I delete my account and my data?</summary>
+        <p>Write to us from the registered e-mail asking for deletion. See the <a href="/listadecompras/privacy.html">privacy policy</a> to know what is deleted.</p></details>
+      <details><summary>Does it work offline?</summary>
+        <p>You can view the last saved version of your lists. To add, check or remove items you need to be online.</p></details>
     </div>
   </section>
 
-  <p class="help-empty" id="help-empty">Nenhuma pergunta encontrada. Tente outra palavra ou fale com a gente.</p>
+  <p class="help-empty" id="help-empty">No questions found. Try another word or get in touch.</p>
 
   <div class="box help-cta">
-    <h3>Não encontrou o que procurava?</h3>
-    <p>Escreva para nós e respondemos por e-mail. Para pedidos sobre os seus dados, veja também a <a href="/listadecompras/privacy.html">política de privacidade</a>.</p>
-    <p style="margin-top:12px"><a class="button" href="/contato/">Falar com a gente</a></p>
+    <h3>Can't find what you need?</h3>
+    <p>Write to us and we reply by e-mail. For requests about your data, see also the <a href="/listadecompras/privacy.html">privacy policy</a>.</p>
+    <p style="margin-top:12px"><a class="button" href="/contact/">Get in touch</a></p>
   </div>
 
   <script>
@@ -226,8 +227,8 @@
   <footer>
     <p>
       FLR Sistemas<br>
-      Contato: <a href="mailto:contato@flrsistemas.com.br">contato@flrsistemas.com.br</a><br>
-      <a href="/listadecompras/privacy.html">Política de privacidade</a>
+      Contact: <a href="mailto:contato@flrsistemas.com.br">contato@flrsistemas.com.br</a><br>
+      <a href="/listadecompras/privacy.html">Privacy Policy</a>
     </p>
   </footer>
 

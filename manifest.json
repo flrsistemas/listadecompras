@@ -1,14 +1,14 @@
 {
   "name": "Lista de Compras Compartilhada",
   "short_name": "Compras",
-  "description": "Listas de compras compartilhadas em tempo real",
+  "description": "Shopping lists shared in real time",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f4f6f4",
   "theme_color": "#16a34a",
-  "lang": "pt-BR",
+  "lang": "en",
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
