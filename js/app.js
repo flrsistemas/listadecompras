@@ -254,6 +254,36 @@ async function flushQueue() {
   if (sent && state.listId) loadItems();
 }
 
+/* ------------------------- Atualizar app (cache) ------------------------- */
+// Para quando o navegador insiste numa versão antiga: baixa os arquivos novos, remove o
+// service worker e os caches e recarrega. Conta, listas e alterações pendentes ficam intactas.
+const SHELL_FILES = ['./', './index.html', './css/style.css', './js/app.js', './js/config.js', './js/i18n.js', './manifest.json'];
+async function appVersion() {
+  try { const k = (await caches.keys()).find((x) => x.startsWith('lista-compras-')); return k ? k.replace('lista-compras-', '') : ''; } catch { return ''; }
+}
+async function refreshApp() {
+  if (!navigator.onLine) return toast(t('refreshNeedsNet'), true);
+  toast(t('refreshing'));
+  try {
+    // 1) copias novas, ignorando o cache do navegador; se falhar, nada foi apagado
+    const res = await Promise.all(SHELL_FILES.map((u) => fetch(u, { cache: 'reload' })));
+    if (res.some((r) => !r.ok)) throw new Error('shell');
+    // 2) agora sim: service worker e caches antigos (localStorage nao e tocado)
+    const regs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
+    await Promise.all(regs.map((r) => r.unregister()));
+    await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
+  } catch { return toast(t('refreshFail'), true); }
+  location.reload();
+}
+const appFootHtml = () => `<div class="appfoot"><button class="ghost" id="refresh-app" type="button">↻ ${esc(t('refreshApp'))}</button><span class="ver" id="app-ver"></span></div>`;
+function bindAppFoot() {
+  const b = $('#refresh-app');
+  if (b) b.onclick = refreshApp;
+  const show = () => appVersion().then((v) => { const el = $('#app-ver'); if (el && v) el.textContent = v; });
+  show();
+  navigator.serviceWorker?.ready?.then(() => setTimeout(show, 500)); // 1a visita: o cache so existe depois que o service worker instala
+}
+
 /* ------------------------------ Dicas ------------------------------------ */
 // Cada dica aparece uma vez (por usuário). O botão 💡 reabre todas.
 const TIP_IDS = ['welcome', 'list', 'share'];
@@ -339,9 +369,11 @@ function renderAuth(info = '', isErr = false) {
     </button>
     <p class="sub"><a href="${HELP_URL[L]}" target="_blank" rel="noopener">${esc(t('help'))}</a> &middot; <a href="${PRIVACY_URL[L]}" target="_blank" rel="noopener">${esc(t('privacy'))}</a></p>
     <p class="sub">${langSelectHtml()}</p>
+    ${appFootHtml()}
   </section>`;
 
   bindLangSelect();
+  bindAppFoot();
   $('#switch-mode').onclick = () => { state.authMode = login ? 'signup' : 'login'; renderAuth(); };
   $('#auth-form').onsubmit = async (e) => {
     e.preventDefault();
@@ -456,9 +488,11 @@ function renderLists() {
         <span class="total">${money(Math.round((state.totals[l.id] || 0) * 100) / 100)}</span>
         <span>›</span>
       </button>`).join('') : `<div class="empty">${t('noLists')}</div>`}
-  </div>`;
+  </div>
+  ${appFootHtml()}`;
 
   bindLangSelect();
+  bindAppFoot();
   $('#tips-btn').onclick = openTipsPanel;
   $('#logout').onclick = logout;
   $('#newlist').onsubmit = async (e) => {
