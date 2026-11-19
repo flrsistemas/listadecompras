@@ -67,6 +67,8 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .auth h1 { margin: 14px 0 4px; font-size: 1.6rem; }
 .auth p.sub { color: var(--muted); margin: 0 0 22px; }
 .auth form { display: grid; gap: 10px; text-align: left; padding: 18px; }
+.auth .hint { margin: 0; color: var(--muted); font-size: .9rem; }
+.link-btn { justify-self: end; background: none; color: var(--primary); padding: 0 2px; min-height: 28px; font-size: .88rem; text-decoration: underline; }
 .auth .switch { margin-top: 14px; background: none; color: var(--primary); }
 .msg { padding: 10px 12px; border-radius: 10px; font-size: .92rem; background: var(--surface-2); }
 .msg.err { color: var(--danger); }

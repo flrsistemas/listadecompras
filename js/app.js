@@ -118,7 +118,9 @@ const state = {
   items: [],
   members: [],
   totals: {},
-  authMode: 'login',
+  authMode: 'login', // login | signup | forgot
+  recovery: false, // true enquanto o usuário define a nova senha (link do e-mail)
+  prefillEmail: '',
   channels: [],
   live: false,
 };
@@ -349,13 +351,19 @@ window.addEventListener('offline', updateBanner);
 // Volta do link do e-mail de confirmação: o Supabase devolve o resultado no #hash da página
 // (type=signup em caso de sucesso, error_code=otp_expired se o link expirou ou já foi usado).
 let authNotice = null;
+let recoveryTokens = null;
 function consumeAuthCallback() {
   const h = location.hash.replace(/^#/, '');
-  if (!/(^|&)(type=(signup|email)|error(_code)?=)/.test(h)) return; // os nossos hashes começam com '/'
+  if (!/(^|&)(type=(signup|email|recovery)|error(_code)?=)/.test(h)) return; // os nossos hashes começam com '/'
   const p = new URLSearchParams(h);
-  authNotice = (p.get('error') || p.get('error_code'))
-    ? { msg: t(p.get('error_code') === 'otp_expired' ? 'confirmExpired' : 'confirmError'), err: true }
-    : { msg: t('emailConfirmed'), err: false };
+  if (p.get('error') || p.get('error_code')) {
+    authNotice = { msg: t(p.get('error_code') === 'otp_expired' ? 'confirmExpired' : 'confirmError'), err: true };
+  } else if (p.get('type') === 'recovery') { // link de "esqueci minha senha"
+    if (p.get('access_token') && p.get('refresh_token')) recoveryTokens = { access_token: p.get('access_token'), refresh_token: p.get('refresh_token') };
+    else authNotice = { msg: t('confirmError'), err: true };
+  } else {
+    authNotice = { msg: t('emailConfirmed'), err: false };
+  }
   history.replaceState(null, '', location.pathname + location.search); // tira os tokens do endereço
 }
 const APP_URL = new URL('./', location.href).href; // endereço do app, sem hash nem busca
@@ -374,16 +382,45 @@ async function init() {
     route();
   });
 
+  if (recoveryTokens) { // veio do e-mail de nova senha: abre uma sessão temporária e mostra a tela de nova senha
+    state.recovery = true;
+    const { data, error } = await sb.auth.setSession(recoveryTokens);
+    recoveryTokens = null;
+    if (error || !data?.session) { state.recovery = false; authNotice = { msg: t('confirmExpired'), err: true }; } else state.user = data.session.user;
+  }
+
   window.addEventListener('hashchange', route);
   route();
   if (authNotice && state.user) { toast(authNotice.msg, authNotice.err); authNotice = null; } // já estava logado neste aparelho
   flushQueue();
 }
 
+const PASS_PATTERN = '(?=.*[A-Za-z])(?=.*\\d).{8,}';
+// "Confirmar senha": o navegador avisa na hora se os dois campos forem diferentes
+function bindPassMatch(form) {
+  const p1 = form.elements.password, p2 = form.elements.password2;
+  if (!p1 || !p2) return;
+  const chk = () => p2.setCustomValidity(p2.value && p2.value !== p1.value ? t('errPassMismatch') : '');
+  p1.addEventListener('input', chk);
+  p2.addEventListener('input', chk);
+}
+
 function renderAuth(info = '', isErr = false) {
   if (!info && authNotice) { info = authNotice.msg; isErr = authNotice.err; authNotice = null; }
-  const login = state.authMode === 'login';
+  const mode = state.authMode;
+  const login = mode === 'login', forgot = mode === 'forgot';
   const L = getLang();
+  const pre = esc(state.prefillEmail || '');
+  const fields = forgot
+    ? `<p class="hint">${esc(t('forgotHelp'))}</p>
+      <input name="email" type="email" value="${pre}" placeholder="${esc(t('email'))}" autocomplete="email" required>`
+    : `${login ? '' : `<input name="nome" placeholder="${esc(t('name'))}" autocomplete="name" required>`}
+      <input name="email" type="email" value="${pre}" placeholder="${esc(t('email'))}" autocomplete="email" required>
+      <input name="password" type="password" placeholder="${esc(login ? t('password') : t('passwordNew'))}"
+             ${login ? '' : `minlength="8" pattern="${PASS_PATTERN}" title="${esc(t('passwordHint'))}"`}
+             autocomplete="${login ? 'current-password' : 'new-password'}" required>
+      ${login ? `<button class="link-btn" id="forgot" type="button">${esc(t('forgot'))}</button>`
+              : `<input name="password2" type="password" placeholder="${esc(t('passwordConfirm'))}" autocomplete="new-password" required>`}`;
   app.innerHTML = `
   <a class="back-site" href="${SITE_URL[L]}" title="${esc(t('backToSite'))}" aria-label="${esc(t('backToSite'))}">← FLR Sistemas</a>
   <section class="auth">
@@ -391,16 +428,12 @@ function renderAuth(info = '', isErr = false) {
     <h1>Lista de Compras</h1>
     <p class="sub">${esc(t('tagline'))}</p>
     <form class="card" id="auth-form">
-      ${login ? '' : `<input name="nome" placeholder="${esc(t('name'))}" autocomplete="name" required>`}
-      <input name="email" type="email" placeholder="${esc(t('email'))}" autocomplete="email" required>
-      <input name="password" type="password" placeholder="${esc(login ? t('password') : t('passwordNew'))}"
-             ${login ? '' : `minlength="8" pattern="(?=.*[A-Za-z])(?=.*\\d).{8,}" title="${esc(t('passwordHint'))}"`}
-             autocomplete="${login ? 'current-password' : 'new-password'}" required>
+      ${fields}
       ${info ? `<div class="msg ${isErr ? 'err' : ''}">${esc(info)}</div>` : ''}
-      <button class="primary" type="submit">${esc(login ? t('signin') : t('signup'))}</button>
+      <button class="primary" type="submit">${esc(forgot ? t('sendLink') : login ? t('signin') : t('signup'))}</button>
     </form>
     <button class="switch" id="switch-mode" type="button">
-      ${esc(login ? t('noAccount') : t('haveAccount'))}
+      ${esc(forgot ? t('backToLogin') : login ? t('noAccount') : t('haveAccount'))}
     </button>
     <p class="sub"><a href="${HELP_URL[L]}" target="_blank" rel="noopener">${esc(t('help'))}</a> &middot; <a href="${PRIVACY_URL[L]}" target="_blank" rel="noopener">${esc(t('privacy'))}</a></p>
     <p class="sub">${langSelectHtml()}</p>
@@ -409,15 +442,27 @@ function renderAuth(info = '', isErr = false) {
 
   bindLangSelect();
   bindAppFoot();
-  $('#switch-mode').onclick = () => { state.authMode = login ? 'signup' : 'login'; renderAuth(); };
-  $('#auth-form').onsubmit = async (e) => {
+  const form = $('#auth-form');
+  bindPassMatch(form);
+  const keepEmail = () => { state.prefillEmail = form.elements.email.value.trim(); };
+  $('#switch-mode').onclick = () => { keepEmail(); state.authMode = forgot || !login ? 'login' : 'signup'; renderAuth(); };
+  const fg = $('#forgot');
+  if (fg) fg.onclick = () => { keepEmail(); state.authMode = 'forgot'; renderAuth(); };
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
     const email = f.get('email').trim();
     const password = f.get('password');
-    const btn = e.target.querySelector('button');
+    if (!login && !forgot && password !== f.get('password2')) { return renderAuth(t('errPassMismatch'), true); }
+    const btn = e.target.querySelector('button[type=submit]');
     btn.disabled = true;
     try {
+      if (forgot) {
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+        if (error) throw error;
+        state.authMode = 'login';
+        return renderAuth(t('forgotSent')); // não diz se o e-mail existe ou não
+      }
       if (login) {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -427,14 +472,54 @@ function renderAuth(info = '', isErr = false) {
           options: { data: { nome: f.get('nome').trim() }, emailRedirectTo: APP_URL },
         });
         if (error) throw error;
+        // Com confirmação de e-mail ligada, o Supabase NÃO devolve erro para um e-mail que já existe
+        // (para não revelar quem tem conta): devolve um usuário sem 'identities'. A senha digitada aqui
+        // é ignorada e a conta continua com a senha antiga. Avisamos o usuário.
+        if (Array.isArray(data.user?.identities) && data.user.identities.length === 0) {
+          state.authMode = 'login';
+          state.prefillEmail = email;
+          return renderAuth(`${t('errExists')} ${t('existsHint')}`, true);
+        }
         if (!data.session) {
           state.authMode = 'login';
           renderAuth(t('accountCreated'));
         }
       }
     } catch (err) {
+      state.prefillEmail = email;
       renderAuth(translateError(err), true);
     }
+  };
+}
+
+// Tela de nova senha (depois de abrir o link do e-mail "esqueci minha senha")
+function renderNewPassword(info = '', isErr = false) {
+  app.innerHTML = `
+  <section class="auth">
+    <img class="logo" src="icons/icon.svg" alt="">
+    <h1>Lista de Compras</h1>
+    <p class="sub">${esc(t('newPassTitle'))}</p>
+    <form class="card" id="np-form">
+      <input name="password" type="password" placeholder="${esc(t('newPass'))}" minlength="8" pattern="${PASS_PATTERN}" title="${esc(t('passwordHint'))}" autocomplete="new-password" required>
+      <input name="password2" type="password" placeholder="${esc(t('confirmNewPass'))}" autocomplete="new-password" required>
+      ${info ? `<div class="msg ${isErr ? 'err' : ''}">${esc(info)}</div>` : ''}
+      <button class="primary" type="submit">${esc(t('savePass'))}</button>
+    </form>
+    <button class="switch" id="np-cancel" type="button">${esc(t('cancel'))}</button>
+  </section>`;
+  const form = $('#np-form');
+  bindPassMatch(form);
+  $('#np-cancel').onclick = async () => { state.recovery = false; await logout(); route(); };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const password = form.elements.password.value;
+    if (password !== form.elements.password2.value) return renderNewPassword(t('errPassMismatch'), true);
+    e.target.querySelector('button[type=submit]').disabled = true;
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) return renderNewPassword(translateError(error), true);
+    state.recovery = false;
+    toast(t('passwordChanged'));
+    route(); // já está logado: abre as listas
   };
 }
 
@@ -444,6 +529,7 @@ function translateError(err) {
   if (/already registered/i.test(m)) return t('errExists');
   if (/Email not confirmed/i.test(m)) return t('errNotConfirmed');
   if (/password.*(at least|characters|weak|contain)|weak_password/i.test(m)) return t('errWeak');
+  if (/different from the old|same_password/i.test(m)) return t('errSamePass');
   if (/rate limit/i.test(m)) return t('errRate');
   if (/fetch|network/i.test(m)) return t('errNetwork');
   return m;
@@ -462,6 +548,7 @@ async function logout() {
 
 /* ------------------------------ Roteamento ------------------------------ */
 function route() {
+  if (state.recovery) { if (state.user) return renderNewPassword(); state.recovery = false; }
   if (!state.user) { teardownRealtime(); return renderAuth(); }
   const m = location.hash.match(/^#\/list\/([0-9a-f-]+)/i);
   if (m) openList(m[1]); else showLists();
