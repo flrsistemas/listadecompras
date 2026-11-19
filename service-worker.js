@@ -1,5 +1,5 @@
 // Service worker — caminhos relativos (compatível com GitHub Pages em subpasta)
-const VERSION = 'v6';
+const VERSION = 'v7';
 const CACHE = `lista-compras-${VERSION}`;
 const SHELL = [
   './',
