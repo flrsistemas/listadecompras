@@ -53,9 +53,9 @@ input, select {
 }
 input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1px; border-color: transparent; }
 
-.topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.lang-sel { width: auto; min-height: 36px; padding: 4px 8px; border-radius: 10px; font-size: .85rem; }
-.topbar h1 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 10px; }
+.lang-sel { width: 5.6rem; min-height: 36px; padding: 4px 6px; border-radius: 10px; font-size: .82rem; }
+.topbar h1 { flex: 1; min-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
 
 /* Auth */
@@ -92,6 +92,15 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .item .nm { display: block; overflow-wrap: anywhere; }
 .item .price { flex: none; font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .item.done .price { color: var(--muted); }
+.tipbody ul { margin: 8px 0 14px; padding-left: 20px; display: grid; gap: 10px; }
+.tipbody { line-height: 1.45; margin-bottom: 14px; }
+#tipdlg .row { flex-wrap: wrap; justify-content: space-between; }
+#tipdlg .row .ghost { font-size: .85rem; color: var(--muted); }
+.tip-card { background: var(--surface-2); border-radius: 12px; padding: 12px 14px; }
+.tip-card h4 { margin: 0 0 6px; }
+.tiphint { font-size: .9rem; line-height: 1.4; }
+.tiphint button { margin-top: 8px; min-height: 34px; padding: 4px 12px; font-size: .85rem; }
+.pending { margin: 4px 0 8px; padding: 8px 12px; border-radius: 10px; font-size: .85rem; background: #f59e0b; color: #1f1300; }
 .total-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin: 4px 0 8px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); }
 .total-bar strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .list-card .total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }

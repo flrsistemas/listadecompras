@@ -150,13 +150,97 @@ function bindLangSelect() {
   sel.onchange = () => { setLang(sel.value); updateBanner(); route(); };
 }
 
+/* ------------------- Marcações sem sinal (fila local) ------------------- */
+// Marcar/desmarcar um item sem conexão fica guardado no aparelho e é enviado
+// quando o sinal volta. Vale o último toque por item.
+const isNetErr = (err) => !navigator.onLine || /fetch|network|timeout|abort|load failed|offline/i.test(String(err?.message || err?.name || err));
+// Em sinal fraco a requisição pode ficar pendurada: após 8 s tratamos como falha de rede
+function timed(q, ms = 8000) {
+  const c = new AbortController();
+  const timer = setTimeout(() => c.abort(), ms);
+  return q.abortSignal(c.signal).then(
+    (r) => { clearTimeout(timer); return r; },
+    (e) => { clearTimeout(timer); return { data: null, error: e }; },
+  );
+}
+const queueKey = () => `lc:queue:${state.user.id}`;
+const getQueue = () => (state.user ? store.get(queueKey()) || [] : []);
+function setQueue(q) { if (!state.user) return; store.set(queueKey(), q); updatePending(); }
+function pendingMap() { const m = {}; for (const e of getQueue()) m[e.id] = e.is_checked; return m; }
+const withPending = (i) => { const m = pendingMap(); return i.id in m ? { ...i, is_checked: m[i.id] } : i; };
+function updatePending() {
+  const el = $('#pending');
+  if (!el) return;
+  const n = getQueue().filter((e) => e.list_id === state.listId).length;
+  el.hidden = !n;
+  el.textContent = n ? t('pendingSync', { n }) : '';
+}
+function enqueue(item, is_checked) {
+  const q = getQueue();
+  const first = q.length === 0;
+  setQueue([...q.filter((e) => e.id !== item.id), { id: item.id, list_id: item.list_id, is_checked, ts: Date.now() }]);
+  if (first) toast(t('queued'));
+}
+let flushing = false;
+async function flushQueue() {
+  if (flushing || !state.user || !navigator.onLine || !getQueue().length) return;
+  flushing = true;
+  let sent = 0;
+  try {
+    for (const e of [...getQueue()]) {
+      const { error } = await timed(sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
+      if (error && isNetErr(error)) break; // sem sinal de novo: tenta mais tarde
+      // enviado (ou recusado de vez, ex.: item removido): sai da fila
+      setQueue(getQueue().filter((x) => !(x.id === e.id && x.ts === e.ts)));
+      sent++;
+    }
+  } finally { flushing = false; }
+  if (sent && !getQueue().length) toast(t('synced'));
+  if (sent && state.listId) loadItems();
+}
+
+/* ------------------------------ Dicas ------------------------------------ */
+// Cada dica aparece uma vez (por usuário). O botão 💡 reabre todas.
+const TIP_IDS = ['welcome', 'list', 'share'];
+const tipsDlg = $('#tipdlg');
+const tipsKey = () => `lc:tips:${state.user.id}`;
+const tipsState = () => (state.user ? store.get(tipsKey()) || {} : {});
+const tipSeen = (id) => { const s = tipsState(); return !!(s.off || s[id]); };
+function markTip(id) { if (!state.user) return; const s = tipsState(); s[id] = true; store.set(tipsKey(), s); }
+tipsDlg.addEventListener('click', (e) => { if (e.target === tipsDlg) tipsDlg.close(); });
+function showTip(id) {
+  tipsDlg.innerHTML = `<div class="tip"><h3>${esc(t(`tip_${id}_t`))}</h3><div class="tipbody">${t(`tip_${id}_b`)}</div>
+    <div class="row"><button type="button" class="ghost" data-off>${esc(t('tipOff'))}</button>
+    <button type="button" class="primary" data-ok>${esc(t('tipOk'))}</button></div></div>`;
+  tipsDlg.addEventListener('close', () => markTip(id), { once: true });
+  tipsDlg.querySelector('[data-ok]').onclick = () => tipsDlg.close();
+  tipsDlg.querySelector('[data-off]').onclick = () => { const s = tipsState(); s.off = true; store.set(tipsKey(), s); tipsDlg.close(); };
+  tipsDlg.showModal();
+}
+function maybeTip(id) {
+  if (!state.user || tipSeen(id)) return;
+  setTimeout(() => {
+    if (tipSeen(id) || document.querySelector('dialog[open]')) return;
+    const here = id === 'welcome' ? !state.listId : !!state.listId; // só se ainda estiver na mesma tela
+    if (state.user && here) showTip(id);
+  }, 700);
+}
+function openTipsPanel() {
+  dlg.innerHTML = `<h3>${esc(t('tipsTitle'))}</h3><div class="stack">
+    ${TIP_IDS.map((id) => `<section class="tip-card"><h4>${esc(t(`tip_${id}_t`))}</h4><div class="tipbody">${t(`tip_${id}_b`)}</div></section>`).join('')}
+    <div class="row" style="justify-content:space-between"><button data-reset>${esc(t('tipReset'))}</button><button data-close>${esc(t('close'))}</button></div></div>`;
+  dlg.querySelector('[data-close]').onclick = () => dlg.close();
+  dlg.querySelector('[data-reset]').onclick = () => { store.set(tipsKey(), {}); dlg.close(); toast(t('tipReset') + ' ✓'); };
+  dlg.showModal();
+}
+
 /* ------------------------------ Offline --------------------------------- */
 function updateBanner() {
   const b = $('#banner');
   b.hidden = navigator.onLine;
   b.textContent = t('offlineBanner');
 }
-window.addEventListener('online', () => { updateBanner(); route(); toast(t('online')); });
+window.addEventListener('online', () => { updateBanner(); flushQueue(); route(); toast(t('online')); });
 window.addEventListener('offline', updateBanner);
 
 /* ------------------------------ Auth ------------------------------------ */
@@ -175,6 +259,7 @@ async function init() {
 
   window.addEventListener('hashchange', route);
   route();
+  flushQueue();
 }
 
 function renderAuth(info = '', isErr = false) {
@@ -272,6 +357,7 @@ async function showLists() {
   state.lists = store.get(listsKey()) || state.lists;
   state.totals = store.get(totalsKey()) || state.totals;
   renderLists();
+  maybeTip('welcome');
   await loadLists();
   setupListsChannel();
 }
@@ -298,6 +384,7 @@ function renderLists() {
   app.innerHTML = `
   <div class="topbar">
     <h1>${esc(t('myLists'))}</h1>
+    <button class="icon ghost" id="tips-btn" aria-label="${esc(t('tipsBtn'))}" title="${esc(t('tipsBtn'))}">💡</button>
     ${langSelectHtml()}
     <button class="ghost" id="logout" title="${esc(t('signout'))}">${esc(t('signout'))}</button>
   </div>
@@ -317,6 +404,7 @@ function renderLists() {
   </div>`;
 
   bindLangSelect();
+  $('#tips-btn').onclick = openTipsPanel;
   $('#logout').onclick = logout;
   $('#newlist').onsubmit = async (e) => {
     e.preventDefault();
@@ -347,6 +435,7 @@ async function openList(id) {
   if (!state.lists.length) state.lists = store.get(listsKey()) || [];
   renderListShell();
   renderItems();
+  maybeTip('list');
 
   await Promise.all([loadItems(), loadMembers(), state.lists.some((l) => l.id === id) ? null : loadLists()]);
   if (state.listId !== id) return;
@@ -365,8 +454,8 @@ async function loadItems() {
 }
 function applyItems(id, data) {
   if (state.listId !== id) return;
-  state.items = data;
-  store.set(itemsKey(id), data);
+  state.items = data.map(withPending); // marcações ainda não enviadas continuam valendo
+  store.set(itemsKey(id), state.items);
   renderItems();
 }
 
@@ -389,6 +478,7 @@ function renderListShell(soft = false) {
     <button class="icon ghost" id="back" aria-label="${esc(t('back'))}">←</button>
     <h1 id="list-title">${esc(l ? l.name : t('listDefault'))}</h1>
     <span class="live ${state.live ? 'on' : ''}" id="live" title="${esc(t('liveTitle'))}"></span>
+    <button class="icon ghost" id="tips-btn" aria-label="${esc(t('tipsBtn'))}" title="${esc(t('tipsBtn'))}">💡</button>
     <button class="icon ghost" id="share" aria-label="${esc(t('shareOptions'))}">👥</button>
   </div>
   <form class="card add-form" id="add-form" autocomplete="off">
@@ -400,12 +490,15 @@ function renderListShell(soft = false) {
     <input name="price" data-num placeholder="${esc(t('pricePh'))}" inputmode="decimal" maxlength="12" style="grid-column:1/2;grid-row:3" aria-label="${esc(t('priceLabel'))}">
     <button class="primary" type="submit" style="grid-column:2/3;grid-row:3">${esc(t('add'))}</button>
   </form>
+  <div class="pending" id="pending" hidden></div>
   <div class="total-bar" id="total-bar"></div>
   <div id="items"></div>`;
 
+  updatePending();
   bindNumeric(app);
   $('#back').onclick = () => (location.hash = '#/');
   $('#share').onclick = openShareDialog;
+  $('#tips-btn').onclick = openTipsPanel;
   const form = $('#add-form');
   const catSel = form.elements.category;
   let manualCat = false;
@@ -497,11 +590,16 @@ function removeItem(id) {
 async function toggleItem(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
-  if (!navigator.onLine) return toast(t('noConnRetry'), true);
-  const prev = it.is_checked;
-  upsertItem({ ...it, is_checked: !prev });
-  const { error } = await sb.from('shopping_items').update({ is_checked: !prev }).eq('id', id);
-  if (error) { upsertItem({ ...it, is_checked: prev }); toast(t('errUpdateItem'), true); }
+  const next = !it.is_checked;
+  upsertItem({ ...it, is_checked: next }); // vale na hora, mesmo sem sinal
+  if (!navigator.onLine) return enqueue(it, next);
+  const { error } = await timed(sb.from('shopping_items').update({ is_checked: next }).eq('id', id));
+  if (error) {
+    if (isNetErr(error)) return enqueue(it, next); // sinal fraco: guarda e envia depois
+    upsertItem({ ...it, is_checked: !next });
+    return toast(t('errUpdateItem'), true);
+  }
+  if (getQueue().some((e) => e.id === id)) setQueue(getQueue().filter((e) => e.id !== id)); // o envio de agora vale mais
 }
 
 async function deleteItem(id) {
@@ -567,6 +665,7 @@ function openShareDialog() {
   dlg.innerHTML = `
   <h3>👥 ${esc(l?.name || t('listDefault'))}</h3>
   <div class="stack">
+    ${owner && !tipSeen('share') ? `<div class="msg tiphint" id="share-tip"><strong>${esc(t('tip_share_t'))}</strong><br>${t('tip_share_b')}<br><button type="button" data-tip-ok>${esc(t('tipOk'))}</button></div>` : ''}
     ${owner ? `
     <form id="share-form" class="stack">
       <input name="email" type="email" placeholder="${esc(t('shareEmailPh'))}" required>
@@ -590,6 +689,8 @@ function openShareDialog() {
   </div>`;
 
   dlg.querySelector('[data-close]').onclick = () => dlg.close();
+  const tipOk = dlg.querySelector('[data-tip-ok]');
+  if (tipOk) tipOk.onclick = () => { markTip('share'); dlg.querySelector('#share-tip').remove(); };
 
   const sf = dlg.querySelector('#share-form');
   if (sf) sf.onsubmit = async (e) => {
@@ -651,7 +752,7 @@ function setupItemsChannel(listId) {
       if (p.eventType === 'DELETE') {
         if (p.old?.id) removeItem(p.old.id);
       } else if (p.new?.list_id === listId) {
-        upsertItem(p.new);
+        upsertItem(withPending(p.new));
       }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'list_members' }, async (p) => {
@@ -662,7 +763,7 @@ function setupItemsChannel(listId) {
     .subscribe((status) => {
       setLive(status === 'SUBSCRIBED');
       // Ao reconectar, sincroniza o que foi perdido
-      if (status === 'SUBSCRIBED') loadItems();
+      if (status === 'SUBSCRIBED') { flushQueue(); loadItems(); }
     });
   state.channels.push(ch);
 }
@@ -677,6 +778,7 @@ function teardownRealtime() {
 // Ao voltar para o app (celular desbloqueado / aba reaberta) ressincroniza
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || !state.user || !navigator.onLine) return;
+  flushQueue();
   if (state.listId) loadItems(); else loadLists();
 });
 
