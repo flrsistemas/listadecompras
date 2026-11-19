@@ -303,9 +303,16 @@ const SHELL_FILES = ['./', './index.html', './css/style.css', './js/app.js', './
 async function appVersion() {
   try { const k = (await caches.keys()).find((x) => x.startsWith('lista-compras-')); return k ? k.replace('lista-compras-', '') : ''; } catch { return ''; }
 }
-async function refreshApp() {
-  if (!navigator.onLine) return toast(t('refreshNeedsNet'), true);
-  toast(t('refreshing'));
+// Na tela de entrada o app se atualiza sozinho, uma vez por sessão do navegador (sem mensagens; se
+// falhar, segue com a versão atual). A marca evita laço de recarregamentos.
+function autoRefreshOnce() {
+  if (!navigator.onLine || authNotice || noAutoRefresh) return; // vindo de link de e-mail: não perde a mensagem
+  try { if (sessionStorage.getItem('lc:autoref')) return; sessionStorage.setItem('lc:autoref', '1'); } catch { return; }
+  refreshApp(true);
+}
+async function refreshApp(auto = false) {
+  if (!navigator.onLine) return auto || toast(t('refreshNeedsNet'), true);
+  if (!auto) toast(t('refreshing'));
   try {
     // 1) copias novas, ignorando o cache do navegador; se falhar, nada foi apagado
     const res = await Promise.all(SHELL_FILES.map((u) => fetch(u, { cache: 'reload' })));
@@ -314,13 +321,13 @@ async function refreshApp() {
     const regs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
     await Promise.all(regs.map((r) => r.unregister()));
     await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
-  } catch { return toast(t('refreshFail'), true); }
+  } catch { return auto || toast(t('refreshFail'), true); }
   location.reload();
 }
 const appFootHtml = () => `<div class="appfoot"><button class="ghost" id="refresh-app" type="button">↻ ${esc(t('refreshApp'))}</button><span class="ver" id="app-ver"></span></div>`;
 function bindAppFoot() {
   const b = $('#refresh-app');
-  if (b) b.onclick = refreshApp;
+  if (b) b.onclick = () => refreshApp();
   const show = () => appVersion().then((v) => { const el = $('#app-ver'); if (el && v) el.textContent = v; });
   show();
   navigator.serviceWorker?.ready?.then(() => setTimeout(show, 500)); // 1a visita: o cache so existe depois que o service worker instala
@@ -374,6 +381,7 @@ window.addEventListener('offline', updateBanner);
 // Volta do link do e-mail de confirmação: o Supabase devolve o resultado no #hash da página
 // (type=signup em caso de sucesso, error_code=otp_expired se o link expirou ou já foi usado).
 let authNotice = null;
+let noAutoRefresh = false; // a tela de entrada mostrou uma mensagem do e-mail: não recarregar
 let recoveryTokens = null;
 function consumeAuthCallback() {
   const h = location.hash.replace(/^#/, '');
@@ -528,7 +536,7 @@ function bindPassMatch(form) {
 }
 
 function renderAuth(info = '', isErr = false) {
-  if (!info && authNotice) { info = authNotice.msg; isErr = authNotice.err; authNotice = null; }
+  if (!info && authNotice) { info = authNotice.msg; isErr = authNotice.err; authNotice = null; noAutoRefresh = true; }
   const mode = state.authMode;
   const login = mode === 'login', forgot = mode === 'forgot';
   const L = getLang();
@@ -565,6 +573,7 @@ function renderAuth(info = '', isErr = false) {
 
   bindLangSelect();
   bindAppFoot();
+  autoRefreshOnce();
   const form = $('#auth-form');
   bindPassMatch(form);
   const keepEmail = () => { state.prefillEmail = form.elements.email.value.trim(); };
