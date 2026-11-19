@@ -151,9 +151,9 @@ function bindLangSelect() {
 }
 
 /* ------------------- Alterações sem sinal (fila local) ------------------- */
-// Marcar/desmarcar e ADICIONAR itens sem conexão ficam guardados no aparelho e são
-// enviados quando o sinal volta. O item novo já nasce com o id definitivo (uuid gerado
-// aqui), então não há troca de id depois. Para marcações vale o último toque por item.
+// Marcar, adicionar, EDITAR e REMOVER itens sem conexão ficam guardados no aparelho e
+// são enviados quando o sinal volta, na ordem em que foram feitos. O item novo já nasce
+// com o id definitivo (uuid gerado aqui). Em conflito, vale o último a chegar ao servidor.
 const isNetErr = (err) => !navigator.onLine || /fetch|network|timeout|abort|load failed|offline/i.test(String(err?.message || err?.name || err));
 // Em sinal fraco a requisição pode ficar pendurada: após 8 s tratamos como falha de rede
 function timed(q, ms = 8000) {
@@ -169,13 +169,27 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID()
 const queueKey = () => `lc:queue:${state.user.id}`;
 const getQueue = () => (state.user ? store.get(queueKey()) || [] : []);
 function setQueue(q) { if (!state.user) return; store.set(queueKey(), q); updatePending(); }
+// Tipos: 'add' (item novo), 'edit' (campos), 'del' (remoção) e, sem tipo, a marcação (is_checked)
 const isAdd = (e) => e.type === 'add';
+const isEdit = (e) => e.type === 'edit';
+const isDel = (e) => e.type === 'del';
+const entryItemId = (e) => (isAdd(e) ? e.row.id : e.id);
 const pendingAdds = (listId) => getQueue().filter((e) => isAdd(e) && e.list_id === listId);
 const findPendingAdd = (id) => getQueue().find((e) => isAdd(e) && e.row.id === id);
 const isPendingAdd = (id) => !!findPendingAdd(id);
 const localItem = (row) => ({ ...row, is_checked: !!row.is_checked, updated_at: new Date().toISOString() });
-function pendingMap() { const m = {}; for (const e of getQueue()) if (!isAdd(e)) m[e.id] = e.is_checked; return m; }
-const withPending = (i) => { const m = pendingMap(); return i.id in m ? { ...i, is_checked: m[i.id] } : i; };
+function pendingApplier() {
+  const checks = {}, edits = {};
+  for (const e of getQueue()) { if (isEdit(e)) edits[e.id] = e.patch; else if (!isAdd(e) && !isDel(e)) checks[e.id] = e.is_checked; }
+  return (i) => {
+    let o = i;
+    if (i.id in checks) o = { ...o, is_checked: checks[i.id] };
+    if (edits[i.id]) o = { ...o, ...edits[i.id] };
+    return o;
+  };
+}
+const withPending = (i) => pendingApplier()(i);
+const pendingDels = () => new Set(getQueue().filter(isDel).map((e) => e.id));
 function updatePending() {
   const el = $('#pending');
   if (!el) return;
@@ -183,40 +197,60 @@ function updatePending() {
   el.hidden = !n;
   el.textContent = n ? t('pendingSync', { n }) : '';
 }
-function enqueue(item, is_checked) { // marcação
+// quiet = true quando estamos online: o envio é imediato e não precisa do aviso "salvo no aparelho"
+function push(entry, quiet = false, keep = (e) => true) {
   const q = getQueue();
   const first = q.length === 0;
-  setQueue([...q.filter((e) => isAdd(e) || e.id !== item.id), { id: item.id, list_id: item.list_id, is_checked, ts: Date.now() }]);
-  if (first) toast(t('queued'));
+  setQueue([...q.filter(keep), entry]);
+  if (first && !quiet) toast(t('queued'));
 }
-function enqueueAdd(row) { // item novo
-  const q = getQueue();
-  const first = q.length === 0;
-  setQueue([...q, { type: 'add', id: row.id, list_id: row.list_id, row, ts: Date.now() }]);
-  if (first) toast(t('queued'));
+const enqueue = (item, is_checked) => push({ id: item.id, list_id: item.list_id, is_checked, ts: Date.now() }, false, (e) => isAdd(e) || isEdit(e) || isDel(e) || e.id !== item.id);
+const enqueueAdd = (row) => push({ type: 'add', id: row.id, list_id: row.list_id, row, ts: Date.now() });
+function enqueueEdit(item, patch, quiet = false) {
+  const prev = getQueue().find((e) => isEdit(e) && e.id === item.id);
+  push({ type: 'edit', id: item.id, list_id: item.list_id, patch: { ...(prev ? prev.patch : {}), ...patch }, ts: prev ? prev.ts : Date.now() }, quiet, (e) => !(isEdit(e) && e.id === item.id));
 }
+// remover: as alterações pendentes do mesmo item deixam de importar
+const enqueueDel = (item, quiet = false) => push({ type: 'del', id: item.id, list_id: item.list_id, ts: Date.now() }, quiet, (e) => isAdd(e) || e.id !== item.id);
 const editPendingAdd = (id, patch) => setQueue(getQueue().map((e) => (isAdd(e) && e.row.id === id ? { ...e, row: { ...e.row, ...patch } } : e)));
 const dropPendingAdd = (id) => setQueue(getQueue().filter((e) => !(isAdd(e) && e.row.id === id)));
+const sameEntry = (a, b) => a.id === b.id && a.ts === b.ts && a.type === b.type;
+
 let flushing = false;
+let netToast = false;
 async function flushQueue() {
   if (flushing || !state.user || !navigator.onLine || !getQueue().length) return;
   flushing = true;
-  let sent = 0, failed = 0;
+  let sent = 0, failed = 0, failedOther = 0, broke = false, waited = false;
   try {
-    for (const e of [...getQueue()]) { // em ordem: o item nasce antes de qualquer alteração dele
-      const res = await timed(isAdd(e)
-        ? sb.from('shopping_items').insert(e.row)
-        : sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
-      const error = res.error;
-      if (error && isNetErr(error)) break; // sem sinal de novo: tenta mais tarde
-      // 23505 = o item já tinha chegado ao banco (resposta perdida antes): conta como enviado
-      if (error && !(isAdd(e) && error.code === '23505') && isAdd(e)) { failed++; if (state.listId === e.list_id) removeItem(e.row.id); }
-      setQueue(getQueue().filter((x) => !(x.id === e.id && x.ts === e.ts))); // enviado, ou recusado de vez (ex.: lista removida)
-      sent++;
+    while (!broke && getQueue().length) {
+      const snapshot = [...getQueue()]; // o que for adicionado durante o envio entra na próxima volta
+      for (let k = 0; k < snapshot.length && !broke; k++) {
+        const e = snapshot[k];
+        let batch = [e], res;
+        if (isAdd(e)) res = await timed(sb.from('shopping_items').insert(e.row));
+        else if (isEdit(e)) res = await timed(sb.from('shopping_items').update(e.patch).eq('id', e.id));
+        else if (isDel(e)) { // remoções seguidas vão numa chamada só
+          batch = [e];
+          while (k + 1 < snapshot.length && isDel(snapshot[k + 1]) && batch.length < 50) batch.push(snapshot[++k]);
+          res = await timed(sb.from('shopping_items').delete().in('id', batch.map((x) => x.id)));
+        } else res = await timed(sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
+        const error = res.error;
+        if (error && isNetErr(error)) { broke = true; break; } // sem sinal de novo: tenta mais tarde
+        if (error) { // recusado de vez (ex.: lista removida): 23505 em item novo = já tinha chegado ao banco
+          if (isAdd(e)) { if (error.code !== '23505') { failed++; if (state.listId === e.list_id) removeItem(e.row.id); } } else failedOther++;
+        }
+        if (batch.some((b) => Date.now() - b.ts > 3000)) waited = true; // ficou esperando sinal: vale avisar que sincronizou
+        setQueue(getQueue().filter((x) => !batch.some((b) => sameEntry(x, b))));
+        sent += batch.length;
+      }
     }
   } finally { flushing = false; }
+  if (broke && navigator.onLine && !netToast) { netToast = true; toast(t('queued')); } // sinal fraco: avisa uma vez
+  if (!broke) netToast = false;
   if (failed) toast(t('errAddItem'), true);
-  else if (sent && !getQueue().length) toast(t('synced'));
+  else if (failedOther) toast(t('errUpdateItem'), true);
+  else if (sent && !getQueue().length && waited) toast(t('synced'));
   if (sent && state.listId) loadItems();
 }
 
@@ -477,7 +511,8 @@ function applyItems(id, data) {
   if (state.listId !== id) return;
   // marcações e itens novos ainda não enviados continuam valendo
   const adds = pendingAdds(id).filter((a) => !data.some((d) => d.id === a.row.id)).map((a) => localItem(a.row));
-  state.items = [...data.map(withPending), ...adds];
+  const dels = pendingDels(), apply = pendingApplier();
+  state.items = [...data.filter((d) => !dels.has(d.id)).map(apply), ...adds];
   store.set(itemsKey(id), state.items);
   renderItems();
 }
@@ -557,11 +592,12 @@ function renderItems() {
   const pending = sorted.filter((i) => !i.is_checked);
   const done = sorted.filter((i) => i.is_checked);
 
+  const pend = new Set(getQueue().filter((e) => !isDel(e)).map(entryItemId));
   const itemHtml = (i) => `
     <div class="item ${i.is_checked ? 'done' : ''}" data-id="${i.id}">
       <button class="check" data-act="toggle" aria-label="${esc(t('markItem'))}"><span class="box">✓</span></button>
       <button class="txt" data-act="edit">
-        <span class="nm">${esc(i.name)}${isPendingAdd(i.id) ? ` <span class="pend" title="${esc(t('waitingSignal'))}">⏳</span>` : ''}</span>
+        <span class="nm">${esc(i.name)}${pend.has(i.id) ? ` <span class="pend" title="${esc(t('waitingSignal'))}">⏳</span>` : ''}</span>
         ${qtyLine(i) ? `<span class="qty">${esc(qtyLine(i))}</span>` : ''}
       </button>
       ${i.price != null ? `<span class="price">${money(lineTotal(i))}</span>` : ''}
@@ -627,29 +663,27 @@ async function toggleItem(id) {
     upsertItem({ ...it, is_checked: !next });
     return toast(t('errUpdateItem'), true);
   }
-  if (getQueue().some((e) => e.id === id)) setQueue(getQueue().filter((e) => e.id !== id)); // o envio de agora vale mais
+  const isMark = (e) => !isAdd(e) && !isEdit(e) && !isDel(e) && e.id === id;
+  if (getQueue().some(isMark)) setQueue(getQueue().filter((e) => !isMark(e))); // o envio de agora vale mais que a marcação antiga
 }
 
 async function deleteItem(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
   if (isPendingAdd(id)) { dropPendingAdd(id); return removeItem(id); } // nunca chegou ao banco: basta descartar
-  if (!navigator.onLine) return toast(t('noConn'), true);
-  removeItem(id);
-  const { error } = await sb.from('shopping_items').delete().eq('id', id);
-  if (error) { upsertItem(it); toast(t('errRemoveItem'), true); }
+  removeItem(id); // some da tela na hora, com ou sem sinal
+  enqueueDel(it, navigator.onLine);
+  flushQueue();
 }
 
 async function clearChecked() {
-  const n = state.items.filter((i) => i.is_checked).length;
-  if (!n || !confirm(t('confirmClear', { n }))) return;
-  if (!navigator.onLine) return toast(t('noConn'), true);
-  const { error } = await sb.from('shopping_items').delete().eq('list_id', state.listId).eq('is_checked', true);
-  if (error) return toast(t('errClear'), true);
-  setQueue(getQueue().filter((e) => !(isAdd(e) && e.row.is_checked && e.list_id === state.listId))); // itens novos já marcados também saem
+  const checked = state.items.filter((i) => i.is_checked);
+  if (!checked.length || !confirm(t('confirmClear', { n: checked.length }))) return;
+  for (const i of checked) { if (isPendingAdd(i.id)) dropPendingAdd(i.id); else enqueueDel(i, navigator.onLine); }
   state.items = state.items.filter((i) => !i.is_checked);
   persistItems();
   renderItems();
+  flushQueue();
 }
 
 /* ------------------------------ Diálogos -------------------------------- */
@@ -680,11 +714,14 @@ function openEditDialog(id) {
     const patch = { name: f.name.value.trim(), quantity: parseQty(f.quantity.value), price: parsePrice(f.price.value), category: f.category.value };
     if (!patch.name) return;
     dlg.close();
-    if (isPendingAdd(id)) { editPendingAdd(id, patch); return upsertItem({ ...it, ...patch }); } // ainda não enviado: edita a cópia local
-    if (!navigator.onLine) return toast(t('noConn'), true);
-    const { data, error } = await sb.from('shopping_items').update(patch).eq('id', id).select().single();
-    if (error) return toast(t('errSave'), true);
-    upsertItem(data);
+    // só vão os campos que mudaram: uma edição sem sinal não desfaz o que outra pessoa alterou nos outros campos
+    const same = (k) => (k === 'price' ? (Number(it.price) || 0) === (Number(patch.price) || 0) && (it.price == null) === (patch.price == null) : (it[k] ?? null) === (patch[k] ?? null));
+    for (const k of Object.keys(patch)) if (same(k)) delete patch[k];
+    if (!Object.keys(patch).length) return;
+    upsertItem({ ...it, ...patch }); // vale na hora, com ou sem sinal
+    if (isPendingAdd(id)) return editPendingAdd(id, patch); // item novo ainda não enviado: edita a cópia da fila
+    enqueueEdit(it, patch, navigator.onLine);
+    flushQueue();
   };
   dlg.showModal();
 }
@@ -783,7 +820,7 @@ function setupItemsChannel(listId) {
       if (p.eventType === 'DELETE') {
         if (p.old?.id) removeItem(p.old.id);
       } else if (p.new?.list_id === listId) {
-        upsertItem(withPending(p.new));
+        if (!pendingDels().has(p.new.id)) upsertItem(withPending(p.new));
       }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'list_members' }, async (p) => {
