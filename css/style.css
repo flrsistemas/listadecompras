@@ -104,6 +104,7 @@ input:focus, select:focus { outline: 2px solid var(--primary); outline-offset: 1
 .total-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin: 4px 0 8px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); }
 .total-bar strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .list-card .total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.item .pend { font-size: .8rem; opacity: .8; }
 .item .qty { display: block; font-size: .82rem; color: var(--muted); }
 .item.done .nm { text-decoration: line-through; color: var(--muted); }
 .item.done { opacity: .7; }

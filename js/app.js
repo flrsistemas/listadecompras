@@ -150,9 +150,10 @@ function bindLangSelect() {
   sel.onchange = () => { setLang(sel.value); updateBanner(); route(); };
 }
 
-/* ------------------- Marcações sem sinal (fila local) ------------------- */
-// Marcar/desmarcar um item sem conexão fica guardado no aparelho e é enviado
-// quando o sinal volta. Vale o último toque por item.
+/* ------------------- Alterações sem sinal (fila local) ------------------- */
+// Marcar/desmarcar e ADICIONAR itens sem conexão ficam guardados no aparelho e são
+// enviados quando o sinal volta. O item novo já nasce com o id definitivo (uuid gerado
+// aqui), então não há troca de id depois. Para marcações vale o último toque por item.
 const isNetErr = (err) => !navigator.onLine || /fetch|network|timeout|abort|load failed|offline/i.test(String(err?.message || err?.name || err));
 // Em sinal fraco a requisição pode ficar pendurada: após 8 s tratamos como falha de rede
 function timed(q, ms = 8000) {
@@ -163,10 +164,17 @@ function timed(q, ms = 8000) {
     (e) => { clearTimeout(timer); return { data: null, error: e }; },
   );
 }
+const newId = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
 const queueKey = () => `lc:queue:${state.user.id}`;
 const getQueue = () => (state.user ? store.get(queueKey()) || [] : []);
 function setQueue(q) { if (!state.user) return; store.set(queueKey(), q); updatePending(); }
-function pendingMap() { const m = {}; for (const e of getQueue()) m[e.id] = e.is_checked; return m; }
+const isAdd = (e) => e.type === 'add';
+const pendingAdds = (listId) => getQueue().filter((e) => isAdd(e) && e.list_id === listId);
+const findPendingAdd = (id) => getQueue().find((e) => isAdd(e) && e.row.id === id);
+const isPendingAdd = (id) => !!findPendingAdd(id);
+const localItem = (row) => ({ ...row, is_checked: !!row.is_checked, updated_at: new Date().toISOString() });
+function pendingMap() { const m = {}; for (const e of getQueue()) if (!isAdd(e)) m[e.id] = e.is_checked; return m; }
 const withPending = (i) => { const m = pendingMap(); return i.id in m ? { ...i, is_checked: m[i.id] } : i; };
 function updatePending() {
   const el = $('#pending');
@@ -175,27 +183,40 @@ function updatePending() {
   el.hidden = !n;
   el.textContent = n ? t('pendingSync', { n }) : '';
 }
-function enqueue(item, is_checked) {
+function enqueue(item, is_checked) { // marcação
   const q = getQueue();
   const first = q.length === 0;
-  setQueue([...q.filter((e) => e.id !== item.id), { id: item.id, list_id: item.list_id, is_checked, ts: Date.now() }]);
+  setQueue([...q.filter((e) => isAdd(e) || e.id !== item.id), { id: item.id, list_id: item.list_id, is_checked, ts: Date.now() }]);
   if (first) toast(t('queued'));
 }
+function enqueueAdd(row) { // item novo
+  const q = getQueue();
+  const first = q.length === 0;
+  setQueue([...q, { type: 'add', id: row.id, list_id: row.list_id, row, ts: Date.now() }]);
+  if (first) toast(t('queued'));
+}
+const editPendingAdd = (id, patch) => setQueue(getQueue().map((e) => (isAdd(e) && e.row.id === id ? { ...e, row: { ...e.row, ...patch } } : e)));
+const dropPendingAdd = (id) => setQueue(getQueue().filter((e) => !(isAdd(e) && e.row.id === id)));
 let flushing = false;
 async function flushQueue() {
   if (flushing || !state.user || !navigator.onLine || !getQueue().length) return;
   flushing = true;
-  let sent = 0;
+  let sent = 0, failed = 0;
   try {
-    for (const e of [...getQueue()]) {
-      const { error } = await timed(sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
+    for (const e of [...getQueue()]) { // em ordem: o item nasce antes de qualquer alteração dele
+      const res = await timed(isAdd(e)
+        ? sb.from('shopping_items').insert(e.row)
+        : sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
+      const error = res.error;
       if (error && isNetErr(error)) break; // sem sinal de novo: tenta mais tarde
-      // enviado (ou recusado de vez, ex.: item removido): sai da fila
-      setQueue(getQueue().filter((x) => !(x.id === e.id && x.ts === e.ts)));
+      // 23505 = o item já tinha chegado ao banco (resposta perdida antes): conta como enviado
+      if (error && !(isAdd(e) && error.code === '23505') && isAdd(e)) { failed++; if (state.listId === e.list_id) removeItem(e.row.id); }
+      setQueue(getQueue().filter((x) => !(x.id === e.id && x.ts === e.ts))); // enviado, ou recusado de vez (ex.: lista removida)
       sent++;
     }
   } finally { flushing = false; }
-  if (sent && !getQueue().length) toast(t('synced'));
+  if (failed) toast(t('errAddItem'), true);
+  else if (sent && !getQueue().length) toast(t('synced'));
   if (sent && state.listId) loadItems();
 }
 
@@ -454,7 +475,9 @@ async function loadItems() {
 }
 function applyItems(id, data) {
   if (state.listId !== id) return;
-  state.items = data.map(withPending); // marcações ainda não enviadas continuam valendo
+  // marcações e itens novos ainda não enviados continuam valendo
+  const adds = pendingAdds(id).filter((a) => !data.some((d) => d.id === a.row.id)).map((a) => localItem(a.row));
+  state.items = [...data.map(withPending), ...adds];
   store.set(itemsKey(id), state.items);
   renderItems();
 }
@@ -513,13 +536,17 @@ function renderListShell(soft = false) {
     const f = form.elements;
     const name = f.name.value.trim();
     if (!name) return;
-    if (!navigator.onLine) return toast(t('noConnAdd'), true);
-    const row = { list_id: state.listId, name, quantity: parseQty(f.quantity.value), price: parsePrice(f.price.value), category: f.category.value, created_by: state.user.id };
+    const row = { id: newId(), list_id: state.listId, name, quantity: parseQty(f.quantity.value), price: parsePrice(f.price.value), category: f.category.value, created_by: state.user.id, is_checked: false };
     f.name.value = ''; f.quantity.value = ''; f.price.value = ''; manualCat = false;
     f.name.focus();
-    const { data, error } = await sb.from('shopping_items').insert(row).select().single();
-    if (error) return toast(t('errAddItem'), true);
-    upsertItem(data);
+    upsertItem(localItem(row)); // aparece na hora, com ou sem sinal
+    if (!navigator.onLine) return enqueueAdd(row);
+    const { error } = await timed(sb.from('shopping_items').insert(row));
+    if (error && error.code !== '23505') {
+      if (isNetErr(error)) return enqueueAdd(row); // sinal fraco: guarda e envia depois
+      removeItem(row.id);
+      toast(t('errAddItem'), true);
+    }
   };
 }
 
@@ -534,7 +561,7 @@ function renderItems() {
     <div class="item ${i.is_checked ? 'done' : ''}" data-id="${i.id}">
       <button class="check" data-act="toggle" aria-label="${esc(t('markItem'))}"><span class="box">✓</span></button>
       <button class="txt" data-act="edit">
-        <span class="nm">${esc(i.name)}</span>
+        <span class="nm">${esc(i.name)}${isPendingAdd(i.id) ? ` <span class="pend" title="${esc(t('waitingSignal'))}">⏳</span>` : ''}</span>
         ${qtyLine(i) ? `<span class="qty">${esc(qtyLine(i))}</span>` : ''}
       </button>
       ${i.price != null ? `<span class="price">${money(lineTotal(i))}</span>` : ''}
@@ -592,6 +619,7 @@ async function toggleItem(id) {
   if (!it) return;
   const next = !it.is_checked;
   upsertItem({ ...it, is_checked: next }); // vale na hora, mesmo sem sinal
+  if (isPendingAdd(id)) { editPendingAdd(id, { is_checked: next }); return flushQueue(); } // item ainda não enviado: a marca vai junto
   if (!navigator.onLine) return enqueue(it, next);
   const { error } = await timed(sb.from('shopping_items').update({ is_checked: next }).eq('id', id));
   if (error) {
@@ -605,6 +633,7 @@ async function toggleItem(id) {
 async function deleteItem(id) {
   const it = state.items.find((x) => x.id === id);
   if (!it) return;
+  if (isPendingAdd(id)) { dropPendingAdd(id); return removeItem(id); } // nunca chegou ao banco: basta descartar
   if (!navigator.onLine) return toast(t('noConn'), true);
   removeItem(id);
   const { error } = await sb.from('shopping_items').delete().eq('id', id);
@@ -617,6 +646,7 @@ async function clearChecked() {
   if (!navigator.onLine) return toast(t('noConn'), true);
   const { error } = await sb.from('shopping_items').delete().eq('list_id', state.listId).eq('is_checked', true);
   if (error) return toast(t('errClear'), true);
+  setQueue(getQueue().filter((e) => !(isAdd(e) && e.row.is_checked && e.list_id === state.listId))); // itens novos já marcados também saem
   state.items = state.items.filter((i) => !i.is_checked);
   persistItems();
   renderItems();
@@ -650,6 +680,7 @@ function openEditDialog(id) {
     const patch = { name: f.name.value.trim(), quantity: parseQty(f.quantity.value), price: parsePrice(f.price.value), category: f.category.value };
     if (!patch.name) return;
     dlg.close();
+    if (isPendingAdd(id)) { editPendingAdd(id, patch); return upsertItem({ ...it, ...patch }); } // ainda não enviado: edita a cópia local
     if (!navigator.onLine) return toast(t('noConn'), true);
     const { data, error } = await sb.from('shopping_items').update(patch).eq('id', id).select().single();
     if (error) return toast(t('errSave'), true);
