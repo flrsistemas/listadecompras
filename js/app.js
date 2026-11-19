@@ -84,7 +84,16 @@ function parseQty(s) {
   return x && Number(x.replace(',', '.')) > 0 ? x.replace(/[.,]/, decimalSep()) : null;
 }
 const priceInput = (v) => (v == null ? '' : String(v).replace('.', decimalSep()));
-const sumPrices = (items) => Math.round(items.reduce((s, i) => s + (Number(i.price) || 0), 0) * 100) / 100;
+// O preço é por unidade. Quantidade como número ("1,5" => 1.5; "2 un" => 2; vazio/sem número => 1)
+function qtyNum(q) {
+  const m = String(q ?? '').replace(',', '.').match(/\d+(?:\.\d+)?/);
+  const n = m ? Number(m[0]) : 1;
+  return n > 0 ? n : 1;
+}
+const lineTotal = (i) => Math.round((Number(i.price) || 0) * qtyNum(i.quantity) * 100) / 100;
+const sumPrices = (items) => Math.round(items.reduce((s, i) => s + lineTotal(i), 0) * 100) / 100;
+// Linha de detalhe do item: "6 × R$ 6,40" (quantidade × preço unitário) ou só a quantidade
+const qtyLine = (i) => (i.quantity && i.price != null && qtyNum(i.quantity) !== 1 ? `${i.quantity} × ${money(i.price)}` : (i.quantity || ''));
 
 function toast(msg, isErr = false) {
   const el = $('#toast');
@@ -270,14 +279,14 @@ async function showLists() {
 async function loadLists() {
   const [lr, ir] = await Promise.all([
     sb.from('shopping_lists').select('*').order('created_at', { ascending: false }),
-    sb.from('shopping_items').select('list_id, price'),
+    sb.from('shopping_items').select('list_id, price, quantity'),
   ]);
   if (lr.error) { if (navigator.onLine) toast(t('errLoadLists'), true); return; }
   state.lists = lr.data;
   store.set(listsKey(), lr.data);
   if (!ir.error) {
     const totals = {};
-    for (const r of ir.data) totals[r.list_id] = (totals[r.list_id] || 0) + (Number(r.price) || 0);
+    for (const r of ir.data) totals[r.list_id] = (totals[r.list_id] || 0) + lineTotal(r);
     state.totals = totals;
     store.set(totalsKey(), totals);
   }
@@ -433,9 +442,9 @@ function renderItems() {
       <button class="check" data-act="toggle" aria-label="${esc(t('markItem'))}"><span class="box">✓</span></button>
       <button class="txt" data-act="edit">
         <span class="nm">${esc(i.name)}</span>
-        ${i.quantity ? `<span class="qty">${esc(i.quantity)}</span>` : ''}
+        ${qtyLine(i) ? `<span class="qty">${esc(qtyLine(i))}</span>` : ''}
       </button>
-      ${i.price != null ? `<span class="price">${money(i.price)}</span>` : ''}
+      ${i.price != null ? `<span class="price">${money(lineTotal(i))}</span>` : ''}
       <button class="icon ghost del" data-act="del" aria-label="${esc(t('remove'))}">✕</button>
     </div>`;
 
