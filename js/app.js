@@ -173,6 +173,7 @@ function setQueue(q) { if (!state.user) return; store.set(queueKey(), q); update
 const isAdd = (e) => e.type === 'add';
 const isEdit = (e) => e.type === 'edit';
 const isDel = (e) => e.type === 'del';
+const isListEntry = (e) => e.type === 'lrename' || e.type === 'ldel' || e.type === 'lleave'; // renomear / excluir / sair da lista
 const entryItemId = (e) => (isAdd(e) ? e.row.id : e.id);
 const pendingAdds = (listId) => getQueue().filter((e) => isAdd(e) && e.list_id === listId);
 const findPendingAdd = (id) => getQueue().find((e) => isAdd(e) && e.row.id === id);
@@ -180,7 +181,7 @@ const isPendingAdd = (id) => !!findPendingAdd(id);
 const localItem = (row) => ({ ...row, is_checked: !!row.is_checked, updated_at: new Date().toISOString() });
 function pendingApplier() {
   const checks = {}, edits = {};
-  for (const e of getQueue()) { if (isEdit(e)) edits[e.id] = e.patch; else if (!isAdd(e) && !isDel(e)) checks[e.id] = e.is_checked; }
+  for (const e of getQueue()) { if (isEdit(e)) edits[e.id] = e.patch; else if (!isAdd(e) && !isDel(e) && !isListEntry(e)) checks[e.id] = e.is_checked; }
   return (i) => {
     let o = i;
     if (i.id in checks) o = { ...o, is_checked: checks[i.id] };
@@ -193,7 +194,7 @@ const pendingDels = () => new Set(getQueue().filter(isDel).map((e) => e.id));
 function updatePending() {
   const el = $('#pending');
   if (!el) return;
-  const n = getQueue().filter((e) => e.list_id === state.listId).length;
+  const n = getQueue().filter((e) => !state.listId || e.list_id === state.listId).length;
   el.hidden = !n;
   el.textContent = n ? t('pendingSync', { n }) : '';
 }
@@ -212,6 +213,19 @@ function enqueueEdit(item, patch, quiet = false) {
 }
 // remover: as alterações pendentes do mesmo item deixam de importar
 const enqueueDel = (item, quiet = false) => push({ type: 'del', id: item.id, list_id: item.list_id, ts: Date.now() }, quiet, (e) => isAdd(e) || e.id !== item.id);
+// listas: renomear, excluir (dono) e sair (participante) também ficam na fila
+function pendingListOps() {
+  const removed = new Set(), renamed = {};
+  for (const e of getQueue()) { if (e.type === 'ldel' || e.type === 'lleave') removed.add(e.id); else if (e.type === 'lrename') renamed[e.id] = e.name; }
+  return { removed, renamed };
+}
+function applyListOps(lists) {
+  const { removed, renamed } = pendingListOps();
+  return lists.filter((l) => !removed.has(l.id)).map((l) => (renamed[l.id] ? { ...l, name: renamed[l.id] } : l));
+}
+const enqueueListRename = (list, name, quiet = false) => push({ type: 'lrename', id: list.id, list_id: list.id, name, ts: Date.now() }, quiet, (e) => !(e.type === 'lrename' && e.id === list.id));
+// excluir/sair: tudo o que estava pendente nessa lista deixa de importar
+const enqueueListGone = (list, kind, quiet = false) => push({ type: kind, id: list.id, list_id: list.id, user_id: state.user.id, ts: Date.now() }, quiet, (e) => e.list_id !== list.id);
 const editPendingAdd = (id, patch) => setQueue(getQueue().map((e) => (isAdd(e) && e.row.id === id ? { ...e, row: { ...e.row, ...patch } } : e)));
 const dropPendingAdd = (id) => setQueue(getQueue().filter((e) => !(isAdd(e) && e.row.id === id)));
 const sameEntry = (a, b) => a.id === b.id && a.ts === b.ts && a.type === b.type;
@@ -234,7 +248,10 @@ async function flushQueue() {
           batch = [e];
           while (k + 1 < snapshot.length && isDel(snapshot[k + 1]) && batch.length < 50) batch.push(snapshot[++k]);
           res = await timed(sb.from('shopping_items').delete().in('id', batch.map((x) => x.id)));
-        } else res = await timed(sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
+        } else if (e.type === 'lrename') res = await timed(sb.from('shopping_lists').update({ name: e.name }).eq('id', e.id));
+        else if (e.type === 'ldel') res = await timed(sb.from('shopping_lists').delete().eq('id', e.id));
+        else if (e.type === 'lleave') res = await timed(sb.from('list_members').delete().eq('list_id', e.id).eq('user_id', e.user_id));
+        else res = await timed(sb.from('shopping_items').update({ is_checked: e.is_checked }).eq('id', e.id));
         const error = res.error;
         if (error && isNetErr(error)) { broke = true; break; } // sem sinal de novo: tenta mais tarde
         if (error) { // recusado de vez (ex.: lista removida): 23505 em item novo = já tinha chegado ao banco
@@ -251,7 +268,7 @@ async function flushQueue() {
   if (failed) toast(t('errAddItem'), true);
   else if (failedOther) toast(t('errUpdateItem'), true);
   else if (sent && !getQueue().length && waited) toast(t('synced'));
-  if (sent && state.listId) loadItems();
+  if (sent) { if (state.listId) loadItems(); else loadLists(); }
 }
 
 /* ------------------------- Atualizar app (cache) ------------------------- */
@@ -329,8 +346,23 @@ window.addEventListener('online', () => { updateBanner(); flushQueue(); route();
 window.addEventListener('offline', updateBanner);
 
 /* ------------------------------ Auth ------------------------------------ */
+// Volta do link do e-mail de confirmação: o Supabase devolve o resultado no #hash da página
+// (type=signup em caso de sucesso, error_code=otp_expired se o link expirou ou já foi usado).
+let authNotice = null;
+function consumeAuthCallback() {
+  const h = location.hash.replace(/^#/, '');
+  if (!/(^|&)(type=(signup|email)|error(_code)?=)/.test(h)) return; // os nossos hashes começam com '/'
+  const p = new URLSearchParams(h);
+  authNotice = (p.get('error') || p.get('error_code'))
+    ? { msg: t(p.get('error_code') === 'otp_expired' ? 'confirmExpired' : 'confirmError'), err: true }
+    : { msg: t('emailConfirmed'), err: false };
+  history.replaceState(null, '', location.pathname + location.search); // tira os tokens do endereço
+}
+const APP_URL = new URL('./', location.href).href; // endereço do app, sem hash nem busca
+
 async function init() {
   updateBanner();
+  consumeAuthCallback();
   const { data: { session } } = await sb.auth.getSession();
   state.user = session?.user ?? null;
 
@@ -344,10 +376,12 @@ async function init() {
 
   window.addEventListener('hashchange', route);
   route();
+  if (authNotice && state.user) { toast(authNotice.msg, authNotice.err); authNotice = null; } // já estava logado neste aparelho
   flushQueue();
 }
 
 function renderAuth(info = '', isErr = false) {
+  if (!info && authNotice) { info = authNotice.msg; isErr = authNotice.err; authNotice = null; }
   const login = state.authMode === 'login';
   const L = getLang();
   app.innerHTML = `
@@ -390,7 +424,7 @@ function renderAuth(info = '', isErr = false) {
       } else {
         const { data, error } = await sb.auth.signUp({
           email, password,
-          options: { data: { nome: f.get('nome').trim() } },
+          options: { data: { nome: f.get('nome').trim() }, emailRedirectTo: APP_URL },
         });
         if (error) throw error;
         if (!data.session) {
@@ -456,8 +490,8 @@ async function loadLists() {
     sb.from('shopping_items').select('list_id, price, quantity'),
   ]);
   if (lr.error) { if (navigator.onLine) toast(t('errLoadLists'), true); return; }
-  state.lists = lr.data;
-  store.set(listsKey(), lr.data);
+  state.lists = applyListOps(lr.data); // excluídas/renomeadas sem sinal continuam valendo
+  store.set(listsKey(), state.lists);
   if (!ir.error) {
     const totals = {};
     for (const r of ir.data) totals[r.list_id] = (totals[r.list_id] || 0) + lineTotal(r);
@@ -469,6 +503,7 @@ async function loadLists() {
 
 function renderLists() {
   const me = state.user.id;
+  const renamedPending = pendingListOps().renamed;
   app.innerHTML = `
   <div class="topbar">
     <h1>${esc(t('myLists'))}</h1>
@@ -480,11 +515,12 @@ function renderLists() {
     <input name="name" placeholder="${esc(t('newListPh'))}" maxlength="80" required>
     <button class="primary" type="submit">${esc(t('create'))}</button>
   </form>
+  <div class="pending" id="pending" hidden></div>
   <div class="list-cards">
     ${state.lists.length ? state.lists.map((l) => `
       <button class="list-card" data-open="${l.id}">
         <span class="ico">${l.owner_id === me ? '📋' : '🤝'}</span>
-        <span class="grow"><span class="name">${esc(l.name)}</span><br>
+        <span class="grow"><span class="name">${esc(l.name)}${renamedPending[l.id] ? ' ⏳' : ''}</span><br>
           <span class="meta">${esc(l.owner_id === me ? t('yourList') : t('sharedWithYou'))}</span></span>
         <span class="total">${money(Math.round((state.totals[l.id] || 0) * 100) / 100)}</span>
         <span>›</span>
@@ -494,6 +530,7 @@ function renderLists() {
 
   bindLangSelect();
   bindAppFoot();
+  updatePending();
   $('#tips-btn').onclick = openTipsPanel;
   $('#logout').onclick = logout;
   $('#newlist').onsubmit = async (e) => {
@@ -776,6 +813,7 @@ function openShareDialog() {
   <h3>👥 ${esc(l?.name || t('listDefault'))}</h3>
   <div class="stack">
     ${owner && !tipSeen('share') ? `<div class="msg tiphint" id="share-tip"><strong>${esc(t('tip_share_t'))}</strong><br>${t('tip_share_b')}<br><button type="button" data-tip-ok>${esc(t('tipOk'))}</button></div>` : ''}
+    ${owner ? `<form id="rename-form" class="newlist"><input name="name" value="${esc(l?.name || '')}" maxlength="80" required aria-label="${esc(t('renameList'))}" placeholder="${esc(t('renameList'))}"><button class="primary" type="submit">${esc(t('save'))}</button></form>` : ''}
     ${owner ? `
     <form id="share-form" class="stack">
       <input name="email" type="email" placeholder="${esc(t('shareEmailPh'))}" required>
@@ -802,6 +840,20 @@ function openShareDialog() {
   const tipOk = dlg.querySelector('[data-tip-ok]');
   if (tipOk) tipOk.onclick = () => { markTip('share'); dlg.querySelector('#share-tip').remove(); };
 
+  const rf = dlg.querySelector('#rename-form');
+  if (rf) rf.onsubmit = (e) => {
+    e.preventDefault();
+    const name = e.target.elements.name.value.trim();
+    if (!name || name === l.name) return;
+    dlg.close();
+    const cur = currentList();
+    cur.name = name; // vale na hora, com ou sem sinal
+    store.set(listsKey(), state.lists);
+    $('#list-title').textContent = name;
+    enqueueListRename(cur, name, navigator.onLine);
+    flushQueue();
+  };
+
   const sf = dlg.querySelector('#share-form');
   if (sf) sf.onsubmit = async (e) => {
     e.preventDefault();
@@ -825,16 +877,20 @@ function openShareDialog() {
   const del = dlg.querySelector('#del-list');
   if (del) del.onclick = async () => {
     if (!confirm(t('confirmDelete'))) return;
-    const { error } = await sb.from('shopping_lists').delete().eq('id', state.listId);
-    if (error) return toast(t('errDeleteList'), true);
-    dlg.close(); afterListGone();
+    const gone = currentList();
+    dlg.close();
+    enqueueListGone(gone, 'ldel', navigator.onLine); // some na hora; o servidor recebe quando houver sinal
+    afterListGone();
+    flushQueue();
   };
   const leave = dlg.querySelector('#leave-list');
   if (leave) leave.onclick = async () => {
     if (!confirm(t('confirmLeave'))) return;
-    const { error } = await sb.from('list_members').delete().eq('list_id', state.listId).eq('user_id', me);
-    if (error) return toast(t('errLeave'), true);
-    dlg.close(); afterListGone();
+    const gone = currentList();
+    dlg.close();
+    enqueueListGone(gone, 'lleave', navigator.onLine);
+    afterListGone();
+    flushQueue();
   };
   dlg.showModal();
 }
