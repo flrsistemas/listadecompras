@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { t, getLang, setLang, LANGS, LANG_NAMES, CAT_LABEL, HELP_URL, PRIVACY_URL, numLocale, decimalSep } from './i18n.js';
+import { t, getLang, setLang, LANGS, LANG_NAMES, CAT_LABEL, HELP_URL, PRIVACY_URL, SITE_URL, numLocale, decimalSep } from './i18n.js';
 
 /* ------------------------------ Utilidades ------------------------------ */
 const $ = (s, r = document) => r.querySelector(s);
@@ -351,6 +351,7 @@ function renderAuth(info = '', isErr = false) {
   const login = state.authMode === 'login';
   const L = getLang();
   app.innerHTML = `
+  <a class="back-site" href="${SITE_URL[L]}" title="${esc(t('backToSite'))}" aria-label="${esc(t('backToSite'))}">← FLR Sistemas</a>
   <section class="auth">
     <img class="logo" src="icons/icon.svg" alt="">
     <h1>Lista de Compras</h1>
@@ -652,8 +653,15 @@ function renderItems() {
   box.innerHTML = html;
 
   const total = sumPrices(state.items);
+  const inCart = state.items.filter((i) => i.is_checked);
+  const cart = sumPrices(inCart);
+  const pct = state.items.length ? Math.round((inCart.length / state.items.length) * 100) : 0;
   const bar = $('#total-bar');
-  if (bar) bar.innerHTML = `<span>${esc(t('totalList'))}</span><strong>${money(total)}</strong>`;
+  if (bar) {
+    bar.innerHTML = `<div class="tb-col"><span>🛒 ${esc(t('inCart'))} (${inCart.length}/${state.items.length})</span><strong>${money(cart)}</strong></div>
+      <div class="tb-col end"><span>${esc(t('totalList'))}</span><strong>${money(total)}</strong></div>
+      <div class="tb-prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>`;
+  }
   if (state.listId) state.totals[state.listId] = total;
 }
 
