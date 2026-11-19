@@ -1,6 +1,6 @@
-// Traduções do app (en é o padrão). As categorias são guardadas no banco com
+// Traduções do app (pt-BR é o padrão; idiomas sem tradução caem em inglês). As categorias são guardadas no banco com
 // o nome em português (chave); aqui só mudam os rótulos exibidos.
-export const LANGS = ['en', 'pt', 'es'];
+export const LANGS = ['pt', 'en', 'es'];
 export const LANG_NAMES = { en: 'English', pt: 'Português', es: 'Español' };
 const KEY = 'lc:lang';
 const HTML_LANG = { en: 'en', pt: 'pt-BR', es: 'es' };
@@ -27,8 +27,8 @@ export function setLang(l) {
 export const numLocale = () => NUM_LOCALE[lang];
 export const decimalSep = () => (lang === 'en' ? '.' : ',');
 
-export const HELP_URL = { en: '/listadecompras/ajuda/', pt: '/listadecompras/ajuda/pt/', es: '/listadecompras/ajuda/es/' };
-export const PRIVACY_URL = { en: '/listadecompras/privacy.html', pt: '/listadecompras/privacy-pt.html', es: '/listadecompras/privacy-es.html' };
+export const HELP_URL = { pt: '/listadecompras/ajuda/', en: '/listadecompras/ajuda/en/', es: '/listadecompras/ajuda/es/' };
+export const PRIVACY_URL = { pt: '/listadecompras/privacy.html', en: '/listadecompras/privacy-en.html', es: '/listadecompras/privacy-es.html' };
 
 export const CAT_LABEL = {
   en: { 'Hortifruti': 'Produce', 'Açougue': 'Butcher', 'Padaria': 'Bakery', 'Laticínios': 'Dairy', 'Limpeza': 'Cleaning', 'Mercearia': 'Pantry', 'Bebidas': 'Drinks', 'Outros': 'Other' },

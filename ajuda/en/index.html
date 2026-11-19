@@ -2,12 +2,227 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Redirecting…</title>
-<meta name="robots" content="noindex">
-<link rel="canonical" href="https://flrsistemas.com.br/listadecompras/ajuda/">
-<meta http-equiv="refresh" content="0; url=/listadecompras/ajuda/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Help — Lista de Compras</title>
+<meta name="description" content="Frequently asked questions about the Lista de Compras app.">
+<link rel="canonical" href="https://flrsistemas.com.br/listadecompras/ajuda/en/">
+<link rel="alternate" hreflang="pt" href="https://flrsistemas.com.br/listadecompras/ajuda/">
+<link rel="alternate" hreflang="en" href="https://flrsistemas.com.br/listadecompras/ajuda/en/">
+<link rel="alternate" hreflang="es" href="https://flrsistemas.com.br/listadecompras/ajuda/es/">
+<link rel="alternate" hreflang="x-default" href="https://flrsistemas.com.br/listadecompras/ajuda/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FLR Sistemas">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Help — Lista de Compras">
+<meta property="og:description" content="Frequently asked questions about the Lista de Compras app.">
+<meta property="og:url" content="https://flrsistemas.com.br/listadecompras/ajuda/en/">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14201A;
+    --surface: #1B2B22;
+    --text: #E9F2EC;
+    --muted: #A9BDB0;
+    --border: #2D4336;
+    --accent: #4ADE80;
+    --accent-bg: #1D3A2A;
+    --brand: #16A34A;
+    --brand-text: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0 16px 72px; background: var(--bg); color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; }
+  header.site { padding: 24px 0 0; }
+  .back { color: var(--muted); font-size: .95rem; text-decoration: none; }
+  .back:hover, .back:focus-visible { color: var(--text); text-decoration: underline; }
+  article.app { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--border); }
+  .app h2 { font-size: 1.6rem; line-height: 1.2; margin: 0 0 6px; }
+  .app .lead { font-size: 1.1rem; color: var(--muted); margin: 0 0 20px; }
+  .app h3.section { font-size: 1.05rem; margin: 30px 0 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 6px; }
+  .button { display: inline-block; background: var(--brand); color: var(--brand-text); padding: 13px 22px;
+    border-radius: 12px; font-weight: 600; text-decoration: none; }
+  .button:hover, .button:focus-visible { filter: brightness(1.12); }
+  .link { color: var(--muted); font-size: .95rem; }
+  .note { color: var(--muted); font-size: .9rem; margin: 10px 0 0; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+  .card h4 { margin: 0 0 6px; font-size: 1.02rem; }
+  .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+  ol.steps { list-style: none; counter-reset: passo; padding: 0; margin: 0; display: grid; gap: 12px; }
+  ol.steps li { counter-increment: passo; position: relative; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px 16px 64px; }
+  ol.steps li::before { content: counter(passo); position: absolute; left: 18px; top: 16px; width: 32px; height: 32px;
+    border-radius: 50%; background: var(--brand); color: var(--brand-text); display: grid; place-items: center; font-weight: 700; }
+  ol.steps h4 { margin: 0 0 4px; font-size: 1.02rem; }
+  ol.steps p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .shots { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 14px; margin: 0 -2px; }
+  .shots figure { margin: 0; flex: 0 0 auto; scroll-snap-align: start; }
+  .shots img { display: block; width: 200px; height: auto; border-radius: 18px; border: 1px solid var(--border); }
+  .shots figcaption { color: var(--muted); font-size: .85rem; margin-top: 8px; max-width: 200px; }
+  .summary { background: var(--accent-bg); border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; padding: 16px 18px; }
+  .summary p { margin: 0; }
+  a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  a.button { text-decoration: none; }
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: .88rem; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .langs { display: flex; gap: 4px; margin-left: auto; font-size: .85rem; }
+  .langs a { color: var(--muted); text-decoration: none; padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; }
+  .langs a:hover, .langs a:focus-visible { color: var(--text); }
+  .langs a[aria-current="page"] { color: var(--text); border-color: var(--muted); font-weight: 600; }
+
+  h1.page { font-size: 1.7rem; line-height: 1.25; margin: 34px 0 6px; }
+  p.intro { color: var(--muted); margin: 0 0 22px; }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin: 0 0 14px; }
+  .box h3 { margin: 0 0 6px; font-size: 1.02rem; }
+  .box p { margin: 0; color: var(--muted); font-size: .95rem; }
+</style>
 </head>
 <body>
-<p><a href="/listadecompras/ajuda/">/listadecompras/ajuda/</a></p>
+<main>
+
+  <header class="site topbar">
+    <a class="back" href="/listadecompras/sobre/en/">← Lista de Compras</a>
+    <nav class="langs" aria-label="Language"><a href="/listadecompras/ajuda/" lang="pt" hreflang="pt" onclick="try{localStorage.setItem('lang','pt')}catch(e){}">PT</a><a href="/listadecompras/ajuda/en/" lang="en" hreflang="en" aria-current="page" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a><a href="/listadecompras/ajuda/es/" lang="es" hreflang="es" onclick="try{localStorage.setItem('lang','es')}catch(e){}">ES</a></nav>
+  </header>
+
+  <article class="app" id="ajuda" style="margin-top:12px;padding-top:0;border-top:0">
+
+  <style>
+    .help-search { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font: inherit; margin: 0 0 16px; }
+    .help-search:focus { outline: 2px solid var(--muted); outline-offset: 1px; }
+    .topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; padding: 0; list-style: none; }
+    .topics a { display: inline-block; padding: 7px 14px; border: 1px solid var(--border); border-radius: 999px;
+      color: var(--muted); text-decoration: none; font-size: .92rem; background: var(--surface); }
+    .topics a:hover, .topics a:focus-visible { color: var(--text); border-color: var(--muted); }
+    section.faq-group { margin: 30px 0 0; scroll-margin-top: 16px; }
+    section.faq-group h2 { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; margin: 0 0 12px; padding: 0; border: 0; }
+    section.faq-group h2 .ico { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border); font-size: 1.05rem; }
+    section.faq-group .count { margin-left: auto; font-size: .8rem; color: var(--muted); font-weight: 400; }
+    .faq-list { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .faq-list details { border-top: 1px solid var(--border); }
+    .faq-list details:first-child { border-top: 0; }
+    .faq-list summary { cursor: pointer; padding: 15px 18px; font-weight: 600; list-style: none; display: flex; gap: 12px; align-items: baseline; }
+    .faq-list summary::-webkit-details-marker { display: none; }
+    .faq-list summary::after { content: "+"; margin-left: auto; color: var(--muted); font-weight: 400; font-size: 1.2rem; line-height: 1; }
+    .faq-list details[open] summary::after { content: "\2212"; }
+    .faq-list details[open] summary { padding-bottom: 8px; }
+    .faq-list details p { margin: 0; padding: 0 18px 16px; color: var(--muted); font-size: .95rem; }
+    .faq-list details p + p { padding-top: 0; margin-top: -6px; }
+    .faq-list summary:hover { background: rgba(255,255,255,.03); }
+    .help-empty { display: none; color: var(--muted); padding: 24px 0; text-align: center; }
+    .help-cta { margin-top: 36px; }
+  </style>
+
+  <h1 class="page">Help</h1>
+  <p class="intro">Quick answers about <strong>Lista de Compras</strong>.</p>
+
+  <input class="help-search" id="help-q" type="search" placeholder="Search a question…" aria-label="Search a question…">
+  <ul class="topics"><li><a href="#start">🚀 Getting started</a></li><li><a href="#lists">🛒 Lists and items</a></li><li><a href="#share">🤝 Sharing</a></li><li><a href="#account">🔒 Account and data</a></li></ul>
+
+  <section class="faq-group" id="start">
+    <h2><span class="ico">🚀</span>Getting started<span class="count">4 questions</span></h2>
+    <div class="faq-list">
+      <details><summary>How do I create my account?</summary>
+        <p>On the app's first screen, tap "Sign up", enter your name, e-mail and a password of at least 8 characters, with letters and numbers. You get an e-mail to confirm the sign-up; then just sign in.</p></details>
+      <details><summary>I did not get the confirmation e-mail</summary>
+        <p>Wait a few minutes and check your spam or junk folder. The e-mail comes from "Supabase Auth", the service that handles sign-in. If it still does not arrive, write to us with the e-mail you used.</p></details>
+      <details><summary>How do I install it on my phone?</summary>
+        <p>On Android (Chrome), open the app, tap the ⋮ menu and "Install app" or "Add to home screen".</p>
+        <p>On iPhone (Safari), tap Share and "Add to Home Screen".</p></details>
+      <details><summary>Can I change the app language?</summary>
+        <p>Yes. The app comes in English, Portuguese and Spanish and starts in your device language. To switch, use the language selector on the sign-in screen or at the top of the "My lists" screen.</p></details>
+    </div>
+  </section>
+
+  <section class="faq-group" id="lists">
+    <h2><span class="ico">🛒</span>Lists and items<span class="count">5 questions</span></h2>
+    <div class="faq-list">
+      <details><summary>How do I create a list?</summary>
+        <p>On the "My lists" screen, type a name, like "Monthly groceries", and tap "Create".</p></details>
+      <details><summary>How do I add, edit and check items?</summary>
+        <p>Inside the list, type the name in "Add item…", pick the category (the app suggests one) and, if you like, enter quantity and price. Tap "Add".</p>
+        <p>To mark an item as bought, tap its checkbox. To edit, tap the name. To remove it, tap the ✕.</p></details>
+      <details><summary>How do I set item prices?</summary>
+        <p>Use the "Price (R$)" field when adding the item, or tap the item to edit it. The total shows inside the list and on its card. The app does not multiply by quantity: enter the price for the whole item.</p></details>
+      <details><summary>How do I clear the items already bought?</summary>
+        <p>In the list, tap "Clear bought", next to the "Bought" heading. This removes only the checked items, for every member.</p></details>
+      <details><summary>How do I delete a list?</summary>
+        <p>Open the list, tap the people icon (👥) and "Delete list". This deletes the list and all its items for every member and cannot be undone. Only the owner sees this button.</p></details>
+    </div>
+  </section>
+
+  <section class="faq-group" id="share">
+    <h2><span class="ico">🤝</span>Sharing<span class="count">4 questions</span></h2>
+    <div class="faq-list">
+      <details><summary>How do I share a list?</summary>
+        <p>Open the list, tap the people icon (👥), enter the e-mail of who will join and tap "Share". Only the list owner can share it.</p></details>
+      <details><summary>It says "No registered user with this e-mail"</summary>
+        <p>That means no account exists with that e-mail. The person needs to create an account in the app first, with that same e-mail. Then share again.</p></details>
+      <details><summary>How do I remove someone from the list?</summary>
+        <p>Open the list, tap 👥 and "Remove" next to the name. Only the owner can remove members.</p></details>
+      <details><summary>How do I leave a list that was shared with me?</summary>
+        <p>Open the list, tap 👥 and "Leave list". This removes only you; the list stays for the others.</p></details>
+    </div>
+  </section>
+
+  <section class="faq-group" id="account">
+    <h2><span class="ico">🔒</span>Account and data<span class="count">3 questions</span></h2>
+    <div class="faq-list">
+      <details><summary>I forgot my password</summary>
+        <p>The app does not have password recovery on the sign-in screen yet. Write to us from the e-mail you registered with and we will help you get back in.</p></details>
+      <details><summary>How do I delete my account and my data?</summary>
+        <p>Write to us from the registered e-mail asking for deletion. See the <a href="/listadecompras/privacy-en.html">privacy policy</a> to know what is deleted.</p></details>
+      <details><summary>Does it work offline?</summary>
+        <p>You can view the last saved version of your lists. To add, check or remove items you need to be online.</p></details>
+    </div>
+  </section>
+
+  <p class="help-empty" id="help-empty">No questions found. Try another word or get in touch.</p>
+
+  <div class="box help-cta">
+    <h3>Can't find what you need?</h3>
+    <p>Write to us and we reply by e-mail. For requests about your data, see also the <a href="/listadecompras/privacy-en.html">privacy policy</a>.</p>
+    <p style="margin-top:12px"><a class="button" href="/en/contact/">Get in touch</a></p>
+  </div>
+
+  <script>
+    (function () {
+      var q = document.getElementById('help-q');
+      if (!q) return;
+      var empty = document.getElementById('help-empty');
+      q.addEventListener('input', function () {
+        var t = q.value.trim().toLowerCase(), any = false;
+        document.querySelectorAll('section.faq-group').forEach(function (g) {
+          var shown = 0;
+          g.querySelectorAll('details').forEach(function (d) {
+            var ok = !t || d.textContent.toLowerCase().indexOf(t) !== -1;
+            d.style.display = ok ? '' : 'none';
+            if (ok) { shown++; if (t) d.open = true; }
+          });
+          g.style.display = shown ? '' : 'none';
+          if (shown) any = true;
+        });
+        empty.style.display = any ? 'none' : 'block';
+      });
+    })();
+  </script>
+
+  </article>
+
+  <footer>
+    <p>
+      FLR Sistemas<br>
+      Contact: <a href="mailto:contato@flrsistemas.com.br">contato@flrsistemas.com.br</a><br>
+      <a href="/listadecompras/privacy-en.html">Privacy Policy</a>
+    </p>
+  </footer>
+
+</main>
 </body>
 </html>
