@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teste do app (Supabase simulado)</title>
+<script type="importmap">
+{ "imports": { "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm": "/test/mock-supabase.js" } }
+</script>
+<link rel="stylesheet" href="/listadecompras/css/style.css">
+</head>
+<body>
+<div id="banner" class="banner" hidden></div>
+<main id="app" aria-live="polite"><p class="loading">…</p></main>
+<dialog id="dlg"></dialog>
+<dialog id="tipdlg"></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+  // ?keep=1 mantem o localStorage (para testar o que persiste entre aberturas)
+  var keep = location.search.indexOf('keep=1') !== -1;
+  try { if (!keep) localStorage.clear(); localStorage.setItem('lc:lang', new URLSearchParams(location.search).get('lang') || 'pt'); } catch (e) {}
+  window.__db = {
+    lists: [{ id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Mercado', owner_id: 'u1', created_at: '2026-11-19T10:00:00Z' },
+            { id: 'bbbbbbbb-0000-0000-0000-000000000002', name: 'Festa', owner_id: 'u2', created_at: '2026-11-18T10:00:00Z' },
+            { id: 'cccccccc-0000-0000-0000-000000000003', name: 'Farmácia', owner_id: 'u1', created_at: '2026-11-17T10:00:00Z' }],
+    items: [
+      { id: 'i1', list_id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Arroz', quantity: '5', price: 5.8, category: 'Mercearia', is_checked: false },
+      { id: 'i2', list_id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Leite', quantity: '6', price: 6.4, category: 'Laticínios', is_checked: false },
+      { id: 'i3', list_id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Café', quantity: '1', price: 19.9, category: 'Mercearia', is_checked: false },
+    ],
+    members: [],
+  };
+  window.__db.fail = new URLSearchParams(location.search).get('fail') === '1';
+  window.__noSession = new URLSearchParams(location.search).get('nosession') === '1';
+  var hh = new URLSearchParams(location.search).get('hash');
+  location.hash = hh ? hh : (new URLSearchParams(location.search).get('start') === 'lists' ? '#/' : '#/list/aaaaaaaa-0000-0000-0000-000000000001');
+</script>
+<script type="module" src="/listadecompras/js/app.js"></script>
+</body>
+</html>
