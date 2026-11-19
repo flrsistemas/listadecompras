@@ -84,9 +84,34 @@
   .box h3 { margin: 0 0 6px; font-size: 1.02rem; }
   .box p { margin: 0; color: var(--muted); font-size: .95rem; }
 </style>
+<style id="wide">
+  /* Todas as abas usam a mesma largura em telas grandes (sem "pulo" ao trocar de aba) */
+  html { scrollbar-gutter: stable; }
+  @media (min-width: 1000px) {
+    main.wide { max-width: 1100px; }
+    main.wide .apps { gap: 24px; }
+    main.wide article.app { padding: 26px 28px; }
+    main.wide .thumb { height: 260px; }
+    main.wide article.app > p, main.wide article.app > .summary { max-width: 72ch; }
+    main.wide .grid { grid-template-columns: repeat(3, 1fr); }
+    main.wide ol.steps { grid-template-columns: 1fr 1fr; }
+    main.wide .shots { flex-wrap: wrap; overflow: visible; scroll-snap-type: none; gap: 20px; }
+    main.wide .shots img { width: 220px; }
+    main.wide .shots figcaption { max-width: 220px; }
+    main.wide .shots.docs img { width: 300px; }
+    main.wide .shots.docs figcaption { max-width: 300px; }
+    /* abas de texto (Novidades, Ajuda, Contato, Privacidade): mesma largura, conteudo em colunas */
+    main.wide .boxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin: 0 0 22px; }
+    main.wide .boxes .box { margin: 0; }
+    main.wide .news-list { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    main.wide .news-list .news-item { margin: 0; }
+    main.wide .faq-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 36px; align-items: start; }
+    main.wide .faq-cols section.faq-group:first-child, main.wide .faq-cols section.faq-group:nth-child(2) { margin-top: 30px; }
+  }
+</style>
 </head>
 <body>
-<main>
+<main class="wide">
 
   <header class="site topbar">
     <a class="back" href="/listadecompras/sobre/es/">← Lista de Compras</a>
@@ -129,6 +154,7 @@
   <input class="help-search" id="help-q" type="search" placeholder="Buscar una pregunta…" aria-label="Buscar una pregunta…">
   <ul class="topics"><li><a href="#start">🚀 Primeros pasos</a></li><li><a href="#lists">🛒 Listas y artículos</a></li><li><a href="#share">🤝 Compartir</a></li><li><a href="#account">🔒 Cuenta y datos</a></li></ul>
 
+<div class="faq-cols">
   <section class="faq-group" id="start">
     <h2><span class="ico">🚀</span>Primeros pasos<span class="count">4 preguntas</span></h2>
     <div class="faq-list">
@@ -186,6 +212,7 @@
         <p>Puedes consultar la última versión guardada de tus listas. Para agregar, marcar o quitar artículos hay que estar conectado.</p></details>
     </div>
   </section>
+</div>
 
   <p class="help-empty" id="help-empty">No se encontraron preguntas. Prueba otra palabra o escríbenos.</p>
 
