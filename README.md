@@ -13,7 +13,7 @@ Parte da [FLR Sistemas](https://flrsistemas.com.br/).
 - **Modo sem conta** ("Usar sem conta"): as listas ficam só no `localStorage` do aparelho, sem nenhuma chamada ao
   Supabase e sem compartilhamento; ao criar uma conta dá para importar essas listas. Limpar os dados do navegador apaga tudo (o app avisa).
 - **Conta:** cadastro com confirmação de senha e de e-mail, "Esqueci minha senha" e aviso de e-mail já cadastrado.
-- **3 idiomas** (pt-BR, en, es), escolhidos pelo idioma do aparelho; dicas de uso (💡) e botão **"↻ Atualizar app"**
+- **3 idiomas** (pt-BR, en, es), escolhidos pelo idioma do aparelho; dicas de uso (💡) e botão **"↻ Atualizar página"**
   (limpa service worker e caches sem apagar conta, listas nem alterações pendentes).
 
 ## Estrutura
@@ -38,7 +38,7 @@ tools/             geradores dessas páginas e do site da FLR Sistemas
 
 ## Publicar
 GitHub → *Settings → Pages* → Branch `main`, pasta `/ (root)`. O domínio próprio vem da conta dona do Pages.
-Depois de mudar arquivos do app, aumente `VERSION` no `service-worker.js` (e use "↻ Atualizar app" no celular).
+Depois de mudar arquivos do app, aumente `VERSION` no `service-worker.js` (e use "↻ Atualizar página" no celular).
 
 ## Páginas geradas e site da empresa
 As páginas `sobre/`, `ajuda/` e `privacy*.html` **não são editadas à mão**: saem dos scripts em `tools/`, junto com o site

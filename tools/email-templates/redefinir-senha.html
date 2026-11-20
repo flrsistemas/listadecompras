@@ -1,0 +1,18 @@
+<!-- Supabase: Authentication > Email > Templates > Reset password
+     Assunto: Defina uma nova senha na Lista de Compras -->
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1f2933;line-height:1.5">
+  <h2 style="margin:0 0 12px;color:#0f766e">🛒 Lista de Compras</h2>
+  <p>Olá!</p>
+  <p>Recebemos um pedido para definir uma nova senha na sua conta. Toque no botão abaixo para escolher a nova senha:</p>
+  <p style="margin:24px 0">
+    <a href="{{ .ConfirmationURL }}" style="background:#16a34a;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:bold;display:inline-block">Definir nova senha</a>
+  </p>
+  <p style="font-size:14px;color:#52606d">Se o botão não funcionar, copie e cole este endereço no navegador:<br>
+    <span style="word-break:break-all">{{ .ConfirmationURL }}</span></p>
+  <p style="font-size:14px;color:#52606d">Se você não pediu isso, ignore este e-mail: a sua senha atual continua valendo.</p>
+  <hr style="border:none;border-top:1px solid #e4e7eb;margin:24px 0">
+  <p style="font-size:12px;color:#7b8794">Lista de Compras · FLR Sistemas<br>
+    <a href="https://flrsistemas.com.br/listadecompras/ajuda/" style="color:#7b8794">Ajuda</a> ·
+    <a href="https://flrsistemas.com.br/listadecompras/privacy.html" style="color:#7b8794">Privacidade</a><br>
+    Esta mensagem é automática, mas você pode respondê-la para tirar dúvidas.</p>
+</div>

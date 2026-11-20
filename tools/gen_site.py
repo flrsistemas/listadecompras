@@ -692,12 +692,12 @@ for _l, (_dt, _lbl, _h, _tag, _p) in _NEWS6.items():
     BODY[_l]['news'] = BODY[_l]['news'][:_i] + _art + BODY[_l]['news'][_i:]
 
 _NEWS7 = {
- 'en': ('2026-11-19', 'November 19, 2026', 'Lista de Compras: "Update app" button', 'Lista de Compras',
-        'If the app looks outdated, tap "↻ Update app" at the bottom of the lists screen or the sign-in screen. It downloads the newest version and reloads, with no need to switch browsers. Your account, lists and pending changes are kept.'),
- 'pt': ('2026-11-19', '19/11/2026', 'Lista de Compras: botão "Atualizar app"', 'Lista de Compras',
-        'Se o app parecer desatualizado, toque em "↻ Atualizar app" no fim da tela de listas ou da tela de entrada. Ele baixa a versão mais nova e recarrega, sem precisar trocar de navegador. Sua conta, suas listas e as alterações pendentes ficam como estão.'),
- 'es': ('2026-11-19', '19/11/2026', 'Lista de Compras: botón "Actualizar app"', 'Lista de Compras',
-        'Si la app se ve desactualizada, toca "↻ Actualizar app" al final de la pantalla de listas o de inicio de sesión. Descarga la versión más nueva y recarga, sin necesidad de cambiar de navegador. Tu cuenta, tus listas y los cambios pendientes se mantienen.'),
+ 'en': ('2026-11-19', 'November 19, 2026', 'Lista de Compras: "Reload page" button', 'Lista de Compras',
+        'If the page looks outdated, tap "↻ Reload page" at the bottom of the lists screen or the sign-in screen. It downloads the newest version and reloads, with no need to switch browsers. Your account, lists and pending changes are kept.'),
+ 'pt': ('2026-11-19', '19/11/2026', 'Lista de Compras: botão "Atualizar página"', 'Lista de Compras',
+        'Se a página parecer desatualizada, toque em "↻ Atualizar página" no fim da tela de listas ou da tela de entrada. Ele baixa a versão mais nova e recarrega, sem precisar trocar de navegador. Sua conta, suas listas e as alterações pendentes ficam como estão.'),
+ 'es': ('2026-11-19', '19/11/2026', 'Lista de Compras: botón "Actualizar página"', 'Lista de Compras',
+        'Si la página se ve desactualizada, toca "↻ Actualizar página" al final de la pantalla de listas o de inicio de sesión. Descarga la versión más nueva y recarga, sin necesidad de cambiar de navegador. Tu cuenta, tus listas y los cambios pendientes se mantienen.'),
 }
 for _l, (_dt, _lbl, _h, _tag, _p) in _NEWS7.items():
     _art = ('  <article class="news-item">\n    <time datetime="%s">%s</time>\n    <h3>%s <span class="tag">%s</span></h3>\n'
