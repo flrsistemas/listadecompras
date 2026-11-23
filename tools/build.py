@@ -24,6 +24,6 @@ if '--shots' in sys.argv:
         if f.endswith('.png'):
             shutil.copyfile(os.path.join(OUT, 'shots', f), os.path.join(APP, 'sobre', 'img', f))
 
-for script in ('gen_privacy.py', 'gen_sobre.py', 'gen_ajuda.py', 'gen_pc_privacy.py', 'gen_site.py', 'add_wide.py', 'add_lightbox.py', 'check_links.py'):
+for script in ('gen_privacy.py', 'gen_sobre.py', 'gen_ajuda.py', 'gen_pc_privacy.py', 'gen_site.py', 'gen_pc_home.py', 'add_wide.py', 'add_lightbox.py', 'check_links.py'):
     run(script)
 print('Pronto. Confira `git status` nos 3 repositorios e publique o que mudou.')

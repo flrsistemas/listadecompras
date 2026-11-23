@@ -3,19 +3,20 @@ import os, re
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import SITE  # clone de flrsistemas/flrsistemas.github.io
+from site_terms import TERMS, terms_body
 UPDATED = {'pt': '18/11/2026', 'en': 'November 18, 2026', 'es': '18/11/2026'}
 EMAIL = 'contato@flrsistemas.com.br'
 
 PREFIX = {'pt': '/', 'en': '/en/', 'es': '/es/'}
 SLUG = {
-    'pt': {'home': '', 'news': 'novidades/', 'help': 'ajuda/', 'contact': 'contato/', 'privacy': 'privacidade/'},
-    'en': {'home': '', 'news': 'news/', 'help': 'help/', 'contact': 'contact/', 'privacy': 'privacy/'},
-    'es': {'home': '', 'news': 'novedades/', 'help': 'ayuda/', 'contact': 'contacto/', 'privacy': 'privacidad/'},
+    'pt': {'home': '', 'news': 'novidades/', 'help': 'ajuda/', 'contact': 'contato/', 'privacy': 'privacidade/', 'terms': 'termos/'},
+    'en': {'home': '', 'news': 'news/', 'help': 'help/', 'contact': 'contact/', 'privacy': 'privacy/', 'terms': 'terms/'},
+    'es': {'home': '', 'news': 'novedades/', 'help': 'ayuda/', 'contact': 'contacto/', 'privacy': 'privacidad/', 'terms': 'terminos/'},
 }
 TABS = {
-    'pt': {'home': 'Apps', 'news': 'Novidades', 'help': 'Ajuda', 'contact': 'Contato', 'privacy': 'Privacidade'},
-    'en': {'home': 'Apps', 'news': 'News', 'help': 'Help', 'contact': 'Contact', 'privacy': 'Privacy'},
-    'es': {'home': 'Apps', 'news': 'Novedades', 'help': 'Ayuda', 'contact': 'Contacto', 'privacy': 'Privacidad'},
+    'pt': {'home': 'Apps', 'news': 'Novidades', 'help': 'Ajuda', 'contact': 'Contato', 'privacy': 'Privacidade', 'terms': 'Termos de Uso'},
+    'en': {'home': 'Apps', 'news': 'News', 'help': 'Help', 'contact': 'Contact', 'privacy': 'Privacy', 'terms': 'Terms of Use'},
+    'es': {'home': 'Apps', 'news': 'Novedades', 'help': 'Ayuda', 'contact': 'Contacto', 'privacy': 'Privacidad', 'terms': 'Términos de Uso'},
 }
 ORDER = ['home', 'news', 'help', 'contact', 'privacy']
 OG = {'pt': ('pt_BR', 'og-v2.png'), 'en': ('en_US', 'og-en.png'), 'es': ('es_ES', 'og-es.png')}
@@ -42,10 +43,27 @@ def langs_html(lang, key):
         for c in ('pt', 'en', 'es'))
 
 
+QUICK = {
+    'pt': ('Enviar mensagem', 'Contato pelo site'),
+    'en': ('Send a message', 'Contact from the website'),
+    'es': ('Enviar mensaje', 'Contacto desde el sitio'),
+}
+
+
 def footer_html(lang):
+    word, subject = QUICK[lang]
     return ('  <footer>\n    <p>\n      FLR Sistemas<br>\n      %s: <a href="mailto:%s">%s</a><br>\n'
-            '      <a href="%s">%s</a>\n    </p>\n  </footer>\n') % (
-        CONTACT_WORD[lang], EMAIL, EMAIL, path(lang, 'privacy'), TABS[lang]['privacy'])
+            '      <a href="%s">%s</a> &middot; <a href="%s">%s</a>\n    </p>\n'
+            '    <p><a class="quick" href="mailto:%s?subject=%s">&#9993; %s</a></p>\n  </footer>\n') % (
+        CONTACT_WORD[lang], EMAIL, EMAIL, path(lang, 'privacy'), TABS[lang]['privacy'],
+        path(lang, 'terms'), TABS[lang]['terms'], EMAIL, subject.replace(' ', '%20'), word)
+
+
+FOOT_CSS = """
+  footer .quick { display: inline-block; margin-top: 4px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px;
+    color: var(--text); text-decoration: none; font-size: .9rem; }
+  footer .quick:hover, footer .quick:focus-visible { border-color: var(--muted); }
+"""
 
 
 EXTRA_CSS = """
@@ -94,18 +112,21 @@ META = {
   'help': ('Ajuda', 'Perguntas frequentes sobre os apps da FLR Sistemas.'),
   'contact': ('Contato', 'Fale com a FLR Sistemas: dúvidas, sugestões e relatos de problemas.'),
   'privacy': ('Privacidade', 'Política de privacidade dos apps da FLR Sistemas.'),
+  'terms': (TERMS['pt']['title'], TERMS['pt']['desc']),
  },
  'en': {
   'news': ('News', 'News and updates about FLR Sistemas apps.'),
   'help': ('Help', 'Frequently asked questions about FLR Sistemas apps.'),
   'contact': ('Contact', 'Get in touch with FLR Sistemas: questions, suggestions and problem reports.'),
   'privacy': ('Privacy', 'Privacy policy of FLR Sistemas apps.'),
+  'terms': (TERMS['en']['title'], TERMS['en']['desc']),
  },
  'es': {
   'news': ('Novedades', 'Novedades y actualizaciones de las apps de FLR Sistemas.'),
   'help': ('Ayuda', 'Preguntas frecuentes sobre las apps de FLR Sistemas.'),
   'contact': ('Contacto', 'Habla con FLR Sistemas: dudas, sugerencias y reportes de problemas.'),
   'privacy': ('Privacidad', 'Política de privacidad de las apps de FLR Sistemas.'),
+  'terms': (TERMS['es']['title'], TERMS['es']['desc']),
  },
 }
 
@@ -431,6 +452,8 @@ def write(p, s):
 STYLE_RE = re.compile(r'<style>.*?</style>', re.S)
 home_style = STYLE_RE.search(read(os.path.join(SITE, 'index.html'))).group(0)
 assert 'nav.tabs' in home_style and '.app-head' in home_style
+if 'footer .quick' not in home_style:
+    home_style = home_style.replace('</style>', FOOT_CSS + '</style>', 1)
 
 # ------------------------------ Home (3 idiomas) -----------------------------
 APPS = '/listadecompras/'
@@ -491,13 +514,40 @@ def redirect_script(key):
             "    } catch (e) {}\n  })();\n</script>\n") % (path('es', key), path('en', key))
 
 
+def json_ld(lang):
+    """Dados estruturados: a empresa e os dois apps, ja no HTML inicial (para buscadores)."""
+    import json
+    h = HOME[lang]
+    base = 'https://flrsistemas.com.br'
+    apps = [
+        {'@type': 'SoftwareApplication', 'name': 'Preço Certo', 'url': base + h['cards'][0][8],
+         'applicationCategory': 'BusinessApplication', 'operatingSystem': 'Android', 'inLanguage': lang,
+         'description': h['cards'][0][7], 'image': base + h['cards'][0][3], 'downloadUrl': PLAY,
+         'publisher': {'@id': base + '/#org'}},
+        {'@type': 'WebApplication', 'name': 'Lista de Compras', 'url': base + h['cards'][1][8],
+         'applicationCategory': 'LifestyleApplication', 'operatingSystem': 'Any (web, installable PWA)', 'inLanguage': lang,
+         'description': h['cards'][1][7], 'image': base + h['cards'][1][3],
+         'publisher': {'@id': base + '/#org'}},
+    ]
+    data = {'@context': 'https://schema.org', '@graph': [
+        {'@type': 'Organization', '@id': base + '/#org', 'name': 'FLR Sistemas', 'url': base + '/',
+         'logo': base + '/apple-touch-icon.png', 'email': EMAIL},
+        {'@type': 'WebSite', 'name': 'FLR Sistemas', 'url': base + path(lang, 'home'), 'inLanguage': lang,
+         'publisher': {'@id': base + '/#org'}},
+        {'@type': 'ItemList', 'name': h['h2'], 'itemListElement': [
+            {'@type': 'ListItem', 'position': i + 1, 'item': a} for i, a in enumerate(apps)]},
+    ]}
+    return json.dumps(data, ensure_ascii=False, indent=1)
+
+
 def build_home(lang):
     h = HOME[lang]
     loc, ogimg = OG[lang]
     hl = ''.join('<link rel="alternate" hreflang="%s" href="https://flrsistemas.com.br%s">\n' % (c, path(c, 'home')) for c in ('pt', 'en', 'es'))
     cards = []
     for name, icon, what, thumb, tw, th, talt, desc, about_url, open_url in h['cards']:
-        acts = '        <a class="button" href="%s">%s</a>\n' % (about_url, h['about'])
+        slug = 'app-' + re.sub(r'[^a-z]+', '-', name.lower().replace('ç', 'c')).strip('-')
+        acts ='        <a class="button" href="%s">%s</a>\n' % (about_url, h['about'])
         if open_url:
             acts += '        <a class="link" href="%s">%s</a>\n' % (open_url, h['open'])
         else:
@@ -505,11 +555,11 @@ def build_home(lang):
         cards.append(f'''    <!-- ============================================================
          APP: {name}
          ============================================================ -->
-    <article class="app">
+    <article class="app" id="{slug}" aria-labelledby="{slug}-title">
       <div class="app-head">
-        <img class="app-icon" src="{icon}" alt="" width="48" height="48">
+        <img class="app-icon" src="{icon}" alt="{name}" width="48" height="48">
         <div>
-          <h3>{name}</h3>
+          <h3 id="{slug}-title">{name}</h3>
           <p class="what">{what}</p>
         </div>
       </div>
@@ -543,6 +593,13 @@ def build_home(lang):
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{h['alt']}">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FLR Sistemas — apps">
+<meta name="twitter:description" content="{h['desc']}">
+<meta name="twitter:image" content="https://flrsistemas.com.br/img/{ogimg}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<script type="application/ld+json">
+{json_ld(lang)}
+</script>
 {ICON_LINKS}{home_style}
 {script}</head>
 <body>
@@ -557,11 +614,13 @@ def build_home(lang):
 
   {tabs_html(lang, 'home')}
 
-  <h2>{h['h2']}</h2>
+  <section aria-labelledby="apps-title">
+  <h2 id="apps-title">{h['h2']}</h2>
   <div class="apps">
 
 {chr(10).join(cards)}
   </div>
+  </section>
 
 {footer_html(lang)}
 </main>
@@ -808,6 +867,9 @@ for _l in ('pt', 'en', 'es'):
         BODY[_l]['news'] = _n[:_i] + '<div class="news-list">\n  ' + _n[_i:].rstrip() + '\n  </div>\n'
 
 
+for _l in ('pt', 'en', 'es'):
+    BODY[_l]['terms'] = terms_body(_l)
+
 # --------------------------- Paginas internas -------------------------------
 def sub_page(lang, key):
     title_word, desc = META[lang][key]
@@ -860,7 +922,7 @@ def out_path(url):
 
 for lang in ('en', 'pt', 'es'):
     write(out_path(path(lang, 'home')), build_home(lang))
-    for key in ('news', 'help', 'contact', 'privacy'):
+    for key in ('news', 'help', 'contact', 'privacy', 'terms'):
         write(out_path(path(lang, key)), sub_page(lang, key))
 
 
@@ -877,4 +939,23 @@ stub('/pt/', '/')
 for _k in ('news', 'help', 'contact', 'privacy'):
     stub('/pt/' + SLUG['pt'][_k], path('pt', _k))
     stub('/' + SLUG['en'][_k], path('en', _k))
+# ----------------------------- robots.txt e sitemap --------------------------
+BASE = 'https://flrsistemas.com.br'
+# paginas com versoes nos 3 idiomas: (pt, en, es)
+GROUPS = [tuple(path(l, k) for l in ('pt', 'en', 'es')) for k in ('home', 'news', 'help', 'contact', 'privacy', 'terms')]
+GROUPS += [('/precocerto/', '/precocerto/en/', '/precocerto/es/'),
+           ('/listadecompras/sobre/', '/listadecompras/sobre/en/', '/listadecompras/sobre/es/'),
+           ('/listadecompras/ajuda/', '/listadecompras/ajuda/en/', '/listadecompras/ajuda/es/'),
+           ('/precocerto/privacy.html', '/precocerto/privacy-en.html', '/precocerto/privacy-es.html'),
+           ('/listadecompras/privacy.html', '/listadecompras/privacy-en.html', '/listadecompras/privacy-es.html')]
+urls = []
+for grp in GROUPS:
+    alts = ''.join('    <xhtml:link rel="alternate" hreflang="%s" href="%s%s"/>\n' % (c, BASE, u) for c, u in zip(('pt', 'en', 'es'), grp))
+    alts += '    <xhtml:link rel="alternate" hreflang="x-default" href="%s%s"/>\n' % (BASE, grp[0])
+    for u in grp:
+        urls.append('  <url>\n    <loc>%s%s</loc>\n%s  </url>\n' % (BASE, u, alts))
+write(os.path.join(SITE, 'sitemap.xml'),
+      '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+      'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + ''.join(urls) + '</urlset>\n')
+write(os.path.join(SITE, 'robots.txt'), 'User-agent: *\nAllow: /\n\nSitemap: %s/sitemap.xml\n' % BASE)
 print('ok')
